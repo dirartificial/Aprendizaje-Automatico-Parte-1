@@ -260,4 +260,48 @@ describe('Soporte Multi-Proveedor LLM (OpenRouter Free Tier, Ollama Local y Robu
     const caso3 = `{"item": 1, "lista": [1, 2, ], }`;
     expect(extraerJsonDeTexto(caso3)).toEqual({ item: 1, lista: [1, 2] });
   });
+
+  it('lista modelos de OpenRouter incluyendo openrouter/free y modelos con costo cero o :free', async () => {
+    const { listarModelosOpenRouterGratuitos, MODELOS_OPENROUTER_GRATIS_DEFAULT } = await import(
+      '../src/core/gemini'
+    );
+    expect(MODELOS_OPENROUTER_GRATIS_DEFAULT).toContain('openrouter/free');
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'google/gemini-2.0-flash:free', pricing: { prompt: '0', completion: '0' } },
+          { id: 'meta-llama/llama-3.3-70b-instruct:free', pricing: { prompt: '0', completion: '0' } },
+          { id: 'modelo-pago/pro', pricing: { prompt: '0.001', completion: '0.002' } },
+        ],
+      }),
+    } as Response);
+
+    const modelos = await listarModelosOpenRouterGratuitos('sk-or-test-key-12345');
+    expect(modelos[0]).toBe('openrouter/free');
+    expect(modelos).toContain('google/gemini-2.0-flash:free');
+    expect(modelos).not.toContain('modelo-pago/pro');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('lista modelos locales de Ollama desde /api/tags', async () => {
+    const { listarModelosOllamaLocales } = await import('../src/core/gemini');
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        models: [
+          { name: 'qwen2.5-coder:32b', model: 'qwen2.5-coder:32b' },
+          { name: 'gemma4:e4b', model: 'gemma4:e4b' },
+        ],
+      }),
+    } as Response);
+
+    const modelos = await listarModelosOllamaLocales();
+    expect(modelos).toEqual(['qwen2.5-coder:32b', 'gemma4:e4b']);
+
+    fetchSpy.mockRestore();
+  });
 });

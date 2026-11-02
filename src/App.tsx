@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   enmascararApiKey,
   guardarApiKey,
@@ -14,8 +14,11 @@ import {
   GEMINI_MODEL,
   MODELOS_ALTERNATIVOS,
   MODELOS_OPENROUTER_GRATIS_DEFAULT,
+  OPENROUTER_MODEL_DEFAULT,
   obtenerModeloActivo,
   probarConexionGemini,
+  listarModelosOllamaLocales,
+  listarModelosOpenRouterGratuitos,
   MODELOS_OLLAMA_RECOMENDADOS,
 } from './core/gemini';
 
@@ -46,6 +49,7 @@ export function App() {
   const [inputKey, setInputKey] = useState<string>('');
   const [avisoAceptado, setAvisoAceptado] = useState<boolean>(false);
   const [probando, setProbando] = useState<boolean>(false);
+  const [cargandoModelos, setCargandoModelos] = useState<boolean>(false);
   const [modeloSeleccionado, setModeloSeleccionado] = useState<string>(() => obtenerModeloActivo());
   const [modelosOpciones, setModelosOpciones] = useState<string[]>(() => {
     const prov = obtenerProveedorActivo();
@@ -61,22 +65,50 @@ export function App() {
   const [pasoActivo, setPasoActivo] = useState<number>(1);
   const [pasoMaximoAlcanzado, setPasoMaximoAlcanzado] = useState<number>(1);
 
+  const cargarModelosParaProveedor = async (nuevo: ProveedorLLM, keyEspecifica?: string) => {
+    setCargandoModelos(true);
+    try {
+      if (nuevo === 'gemini') {
+        const lista = [...MODELOS_ALTERNATIVOS];
+        setModelosOpciones(lista);
+        if (!lista.includes(modeloSeleccionado as typeof MODELOS_ALTERNATIVOS[number])) {
+          setModeloSeleccionado(GEMINI_MODEL);
+          establecerModeloActivo(GEMINI_MODEL);
+        }
+      } else if (nuevo === 'openrouter') {
+        const key = keyEspecifica ?? inputKey ?? obtenerApiKey() ?? '';
+        const lista = await listarModelosOpenRouterGratuitos(key);
+        setModelosOpciones(lista);
+        if (!lista.includes(modeloSeleccionado)) {
+          const primero = lista.includes(OPENROUTER_MODEL_DEFAULT)
+            ? OPENROUTER_MODEL_DEFAULT
+            : lista[0];
+          setModeloSeleccionado(primero);
+          establecerModeloActivo(primero);
+        }
+      } else if (nuevo === 'ollama') {
+        const lista = await listarModelosOllamaLocales();
+        setModelosOpciones(lista);
+        if (!lista.includes(modeloSeleccionado) && lista.length > 0) {
+          setModeloSeleccionado(lista[0]);
+          establecerModeloActivo(lista[0]);
+        }
+      }
+    } catch {
+      // Ignora errores silenciosamente y preserva los valores por defecto
+    } finally {
+      setCargandoModelos(false);
+    }
+  };
+
+  useEffect(() => {
+    void cargarModelosParaProveedor(proveedorSeleccionado);
+  }, []);
+
   const handleCambiarProveedor = (nuevo: ProveedorLLM) => {
     setProveedorSeleccionado(nuevo);
     establecerProveedorActivo(nuevo);
-    if (nuevo === 'gemini') {
-      establecerModeloActivo(GEMINI_MODEL);
-      setModeloSeleccionado(GEMINI_MODEL);
-      setModelosOpciones([...MODELOS_ALTERNATIVOS]);
-    } else if (nuevo === 'openrouter') {
-      establecerModeloActivo(MODELOS_OPENROUTER_GRATIS_DEFAULT[0]);
-      setModeloSeleccionado(MODELOS_OPENROUTER_GRATIS_DEFAULT[0]);
-      setModelosOpciones([...MODELOS_OPENROUTER_GRATIS_DEFAULT]);
-    } else {
-      establecerModeloActivo(MODELOS_OLLAMA_RECOMENDADOS[0]);
-      setModeloSeleccionado(MODELOS_OLLAMA_RECOMENDADOS[0]);
-      setModelosOpciones([...MODELOS_OLLAMA_RECOMENDADOS]);
-    }
+    void cargarModelosParaProveedor(nuevo);
   };
 
   const handleGuardarKey = (e: React.FormEvent) => {
@@ -93,10 +125,11 @@ export function App() {
     try {
       guardarApiKey(inputKey, proveedorSeleccionado);
       setKeyGuardada(obtenerApiKey());
+      void cargarModelosParaProveedor(proveedorSeleccionado, inputKey);
       setInputKey('');
       setEstadoMensaje({
         tipo: 'exito',
-        texto: 'API key almacenada de forma segura en sessionStorage para esta pestaña.',
+        texto: 'Configuración guardada de forma segura en sessionStorage para esta pestaña.',
       });
     } catch (err) {
       setEstadoMensaje({
@@ -112,7 +145,7 @@ export function App() {
     setInputKey('');
     setEstadoMensaje({
       tipo: 'exito',
-      texto: 'API key eliminada de la memoria de sesión de esta pestaña.',
+      texto: 'Sesión eliminada de la memoria de esta pestaña.',
     });
   };
 
@@ -122,6 +155,9 @@ export function App() {
     try {
       const res = await probarConexionGemini();
       if (res.ok) {
+        if (res.modelosDisponibles && res.modelosDisponibles.length > 0) {
+          setModelosOpciones(res.modelosDisponibles);
+        }
         setEstadoMensaje({
           tipo: 'exito',
           texto: res.mensaje,
@@ -180,9 +216,24 @@ export function App() {
           {keyGuardada && (
             <div className="key-status-group">
               <span className="badge badge-success">Sesión Activa</span>
+
+              {/* Selector de proveedor rápido */}
+              <select
+                className="input input-sm select-provider"
+                value={proveedorSeleccionado}
+                onChange={(e) => handleCambiarProveedor(e.target.value as ProveedorLLM)}
+                title="Cambiar proveedor LLM activo"
+              >
+                <option value="gemini">Google Gemini</option>
+                <option value="openrouter">OpenRouter (:free)</option>
+                <option value="ollama">Ollama Local</option>
+              </select>
+
               <span className="masked-key-tag" data-testid="masked-key">
                 {enmascararApiKey(keyGuardada)}
               </span>
+
+              {/* Selector de modelo activo */}
               <div className="model-select-wrapper">
                 <label htmlFor="model-select" className="sr-only">
                   Modelo activo
@@ -196,19 +247,23 @@ export function App() {
                     setModeloSeleccionado(nuevo);
                     establecerModeloActivo(nuevo);
                   }}
+                  disabled={cargandoModelos}
                 >
                   {modelosOpciones.map((m) => (
                     <option key={m} value={m}>
-                      {m}
+                      {m === 'openrouter/free'
+                        ? 'openrouter/free (Auto-Router: se acomoda al mejor disponible)'
+                        : m}
                     </option>
                   ))}
                 </select>
               </div>
+
               <button
                 type="button"
                 className="btn btn-sm btn-secondary"
                 onClick={handleProbarConexion}
-                disabled={probando}
+                disabled={probando || cargandoModelos}
               >
                 {probando ? 'Probando...' : 'Probar conexión'}
               </button>
@@ -304,7 +359,7 @@ export function App() {
                     checked={proveedorSeleccionado === 'gemini'}
                     onChange={() => handleCambiarProveedor('gemini')}
                   />
-                  <span>Google Gemini (Recomendado oficial - Gratis en Google AI Studio)</span>
+                  <span>Google Gemini (Recomendado oficial - Modelos Flash en Google AI Studio)</span>
                 </label>
                 <label className="radio-option">
                   <input
@@ -314,7 +369,7 @@ export function App() {
                     checked={proveedorSeleccionado === 'openrouter'}
                     onChange={() => handleCambiarProveedor('openrouter')}
                   />
-                  <span>OpenRouter (Modelos :free sin tarjeta)</span>
+                  <span>OpenRouter (Todos los modelos :free y openrouter/free auto-router)</span>
                 </label>
                 <label className="radio-option">
                   <input
@@ -329,6 +384,7 @@ export function App() {
               </div>
             </fieldset>
 
+            {/* Input de Key para Gemini y OpenRouter */}
             {proveedorSeleccionado !== 'ollama' && (
               <div className="form-group mb-3">
                 <label htmlFor="api-key-input" className="form-label">
@@ -345,7 +401,13 @@ export function App() {
                       : 'AIzaSy...'
                   }
                   value={inputKey}
-                  onChange={(e) => setInputKey(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setInputKey(v);
+                    if (proveedorSeleccionado === 'openrouter' && v.trim().length >= 15) {
+                      void cargarModelosParaProveedor('openrouter', v.trim());
+                    }
+                  }}
                   autoComplete="off"
                   spellCheck="false"
                 />
@@ -353,6 +415,92 @@ export function App() {
                   {proveedorSeleccionado === 'openrouter'
                     ? 'Podés obtener tu clave gratuita en openrouter.ai/keys'
                     : 'Podés crear tu clave gratuita en aistudio.google.com'}
+                </small>
+              </div>
+            )}
+
+            {/* Selector de modelo en Onboarding para Ollama */}
+            {proveedorSeleccionado === 'ollama' && (
+              <div className="form-group mb-3">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label htmlFor="onboarding-model-select-ollama" className="form-label" style={{ marginBottom: 0 }}>
+                    2. Modelo local disponible en Ollama:
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
+                    onClick={() => void cargarModelosParaProveedor('ollama')}
+                    disabled={cargandoModelos}
+                    title="Consultar http://localhost:11434/api/tags"
+                  >
+                    {cargandoModelos ? 'Buscando...' : '🔄 Actualizar modelos'}
+                  </button>
+                </div>
+                <select
+                  id="onboarding-model-select-ollama"
+                  className="input input-block select-model"
+                  value={modeloSeleccionado}
+                  onChange={(e) => {
+                    const m = e.target.value;
+                    setModeloSeleccionado(m);
+                    establecerModeloActivo(m);
+                  }}
+                  disabled={cargandoModelos}
+                >
+                  {modelosOpciones.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <small className="form-hint">
+                  Detectado automáticamente desde tu Ollama local en <code>http://localhost:11434</code> ({modelosOpciones.length} modelo(s) disponibles).
+                </small>
+              </div>
+            )}
+
+            {/* Selector de modelo en Onboarding para OpenRouter */}
+            {proveedorSeleccionado === 'openrouter' && (
+              <div className="form-group mb-3">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label htmlFor="onboarding-model-select-openrouter" className="form-label" style={{ marginBottom: 0 }}>
+                    3. Modelo gratuito de OpenRouter:
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
+                    onClick={() => void cargarModelosParaProveedor('openrouter', inputKey)}
+                    disabled={cargandoModelos}
+                    title="Consultar catálogo de modelos :free en OpenRouter"
+                  >
+                    {cargandoModelos ? 'Cargando...' : '🔄 Listar todos los :free'}
+                  </button>
+                </div>
+                <select
+                  id="onboarding-model-select-openrouter"
+                  className="input input-block select-model"
+                  value={modeloSeleccionado}
+                  onChange={(e) => {
+                    const m = e.target.value;
+                    setModeloSeleccionado(m);
+                    establecerModeloActivo(m);
+                  }}
+                  disabled={cargandoModelos}
+                >
+                  {modelosOpciones.map((m) => (
+                    <option key={m} value={m}>
+                      {m === 'openrouter/free'
+                        ? 'openrouter/free (Auto-Router: se acomoda automáticamente al mejor disponible)'
+                        : m}
+                    </option>
+                  ))}
+                </select>
+                <small className="form-hint">
+                  {modeloSeleccionado === 'openrouter/free'
+                    ? '✨ Recomendado: openrouter/free redirige de forma transparente al modelo gratuito más óptimo que esté activo sin cuota agotada.'
+                    : `Modelo seleccionado: ${modeloSeleccionado}`}
                 </small>
               </div>
             )}
@@ -452,6 +600,12 @@ export function App() {
               <summary className="concept-summary">🔒 Seguridad BYOK activa</summary>
               <div className="concept-content" style={{ fontSize: '0.78rem' }}>
                 <p>
+                  Proveedor: <strong>{proveedorSeleccionado.toUpperCase()}</strong>
+                </p>
+                <p>
+                  Modelo: <code>{modeloSeleccionado}</code>
+                </p>
+                <p>
                   Clave: <code>{enmascararApiKey(keyGuardada)}</code>
                 </p>
                 <p>
@@ -509,7 +663,7 @@ export function App() {
 
                   <div className="toolbar-row">
                     <span className="badge badge-secondary">
-                      Fase 0 activa: Entorno seguro y conectado.
+                      Fase 0 activa: Entorno seguro y conectado ({proveedorSeleccionado.toUpperCase()} • {modeloSeleccionado}).
                     </span>
                   </div>
 

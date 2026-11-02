@@ -19,9 +19,11 @@ export const MODELOS_ALTERNATIVOS = [
 ] as const;
 
 /**
- * Lista curada de modelos gratuitos (:free) en OpenRouter.
+ * Lista curada de modelos gratuitos (:free) y auto-router en OpenRouter.
  */
 export const MODELOS_OPENROUTER_GRATIS_DEFAULT = [
+  'openrouter/free',
+  'openrouter/auto',
   'google/gemini-2.0-flash-exp:free',
   'meta-llama/llama-3.3-70b-instruct:free',
   'deepseek/deepseek-r1:free',
@@ -30,7 +32,7 @@ export const MODELOS_OPENROUTER_GRATIS_DEFAULT = [
   'google/learnlm-1.5-pro-experimental:free',
 ] as const;
 
-export const OPENROUTER_MODEL_DEFAULT = 'google/gemini-2.0-flash-exp:free';
+export const OPENROUTER_MODEL_DEFAULT = 'openrouter/free';
 
 /**
  * Configuración para Ollama local (localhost:11434).
@@ -205,7 +207,11 @@ export async function listarModelosOpenRouterGratuitos(
     const gratuitos = (data.data ?? [])
       .filter((m) => {
         if (!m.id) return false;
-        if (m.id.endsWith(':free')) return true;
+        const idLower = m.id.toLowerCase();
+        if (idLower === 'openrouter/free' || idLower === 'openrouter/auto' || idLower === 'openrouter/auto-beta') {
+          return true;
+        }
+        if (idLower.includes(':free')) return true;
         const promptCost = String(m.pricing?.prompt ?? '');
         const completionCost = String(m.pricing?.completion ?? '');
         return (
@@ -215,7 +221,10 @@ export async function listarModelosOpenRouterGratuitos(
       })
       .map((m) => m.id as string);
 
-    return gratuitos.length > 0 ? gratuitos : [...MODELOS_OPENROUTER_GRATIS_DEFAULT];
+    // Asegurar que 'openrouter/free' y 'openrouter/auto' encabecen la lista como routers automáticos
+    const listaCompleta = Array.from(new Set(['openrouter/free', 'openrouter/auto', ...gratuitos]));
+
+    return listaCompleta.length > 0 ? listaCompleta : [...MODELOS_OPENROUTER_GRATIS_DEFAULT];
   } catch {
     return [...MODELOS_OPENROUTER_GRATIS_DEFAULT];
   }
