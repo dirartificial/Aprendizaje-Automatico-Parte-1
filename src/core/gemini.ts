@@ -279,16 +279,12 @@ async function llamarOpenRouter(params: {
 
 /**
  * Normaliza el nombre del modelo para Google GenAI oficial.
- * En Google AI Studio la API real requiere un modelo oficial vigente (como "gemini-2.0-flash" o "gemini-1.5-flash").
- * Si el usuario tiene seleccionado "gemini-3.8-flash" (o variantes 3.x / 2.5),
- * mapeamos transparentemente al modelo oficial de Google "gemini-2.0-flash" para evitar errores HTTP 404 ("models/... is not found").
+ * Limpia espacios y el prefijo 'models/' si está presente.
+ * El modelo elegido se envía directamente a la API de Google sin sustituciones indeseadas.
  */
 export function normalizarModeloGemini(modelo: string): string {
-  const m = modelo.toLowerCase();
-  if (m.includes('3.8') || m.includes('3.5') || m.includes('2.5')) {
-    return 'gemini-2.0-flash';
-  }
-  return modelo;
+  const m = modelo.trim();
+  return m.replace(/^models\//, '');
 }
 
 /**
@@ -689,25 +685,6 @@ export async function probarConexionGemini(
       const detectados = await cliente.listarModelos();
       if (detectados.length > 0) {
         modelosDisponibles = detectados;
-        if (!detectados.includes(modeloActivo)) {
-          if (proveedor === 'ollama') {
-            const preferido =
-              detectados.find((m) => m.startsWith('qwen2.5-coder')) ??
-              detectados.find((m) => m.includes('coder') || m.includes('sql')) ??
-              detectados[0];
-            if (preferido) modeloActivo = preferido;
-          } else if (proveedor === 'openrouter') {
-            const preferido =
-              detectados.find((m) => m.includes('gemini-2.0-flash')) ?? detectados[0];
-            if (preferido) modeloActivo = preferido;
-          } else {
-            const preferido =
-              MODELOS_ALTERNATIVOS.find((m) => detectados.includes(m)) ??
-              detectados.find((m) => m.includes('flash')) ??
-              detectados[0];
-            if (preferido) modeloActivo = preferido;
-          }
-        }
       }
     } catch {
       // Ignorar fallo de listado y continuar con prueba de generación

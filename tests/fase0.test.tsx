@@ -239,9 +239,10 @@ describe('Soporte Multi-Proveedor LLM (OpenRouter Free Tier, Ollama Local y Robu
       'gemini-3.5-flash-lite',
       'gemini-flash-latest',
     ]);
-    expect(normalizarModeloGemini('gemini-3.8-flash')).toBe('gemini-2.0-flash');
-    expect(normalizarModeloGemini('gemini-3.5-flash')).toBe('gemini-2.0-flash');
-    expect(normalizarModeloGemini('gemini-3.5-flash-lite')).toBe('gemini-2.0-flash');
+    expect(normalizarModeloGemini('gemini-3.8-flash')).toBe('gemini-3.8-flash');
+    expect(normalizarModeloGemini('gemini-3.5-flash')).toBe('gemini-3.5-flash');
+    expect(normalizarModeloGemini('gemini-3.5-flash-lite')).toBe('gemini-3.5-flash-lite');
+    expect(normalizarModeloGemini('models/gemini-3.8-flash')).toBe('gemini-3.8-flash');
   });
 
   it('extraerJsonDeTexto extrae correctamente objetos JSON incluso con texto previo o formato markdown irregular', async () => {
