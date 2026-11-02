@@ -133,6 +133,24 @@ describe('Fase 0 — Pantalla de Onboarding y UI de Seguridad', () => {
     expect(obtenerApiKey()).toBeNull();
     expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
   });
+
+  it('renderiza la ruta pedagógica ergonómica en el sidebar y permite navegar entre etapas', () => {
+    guardarApiKey(FAKE_KEY);
+    render(<App />);
+
+    const workspace = screen.getByTestId('ready-workspace');
+    expect(workspace).toBeInTheDocument();
+
+    const step1Btn = screen.getByTestId('wizard-step-btn-1');
+    const step2Btn = screen.getByTestId('wizard-step-btn-2');
+
+    expect(step1Btn).toHaveClass('active');
+    expect(step2Btn).not.toHaveClass('active');
+
+    fireEvent.click(step2Btn);
+    expect(step2Btn).toHaveClass('active');
+    expect(screen.getByTestId('step2-container')).toBeInTheDocument();
+  });
 });
 
 describe('Fase 0 — Wrapper de Gemini, Cuota y Validación Zod con Reintento', () => {

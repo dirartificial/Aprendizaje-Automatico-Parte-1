@@ -303,14 +303,18 @@ code {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 270px minmax(0, 1fr) 320px;
+  grid-template-columns: 290px minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
 }
 
+.workspace-grid.with-inspector {
+  grid-template-columns: 290px minmax(0, 1fr) 320px;
+}
+
 @media (max-width: 1180px) {
   .workspace-grid {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
   }
   .workspace-inspector {
     grid-column: 1 / -1;
@@ -323,6 +327,7 @@ code {
 @media (max-width: 860px) {
   .onboarding-grid,
   .workspace-grid,
+  .workspace-grid.with-inspector,
   .workspace-inspector {
     grid-template-columns: 1fr;
   }
@@ -475,38 +480,45 @@ code {
 .wizard-vertical-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
 .wizard-step-card {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.8rem;
   width: 100%;
   text-align: left;
-  padding: 0.55rem 0.7rem;
-  border-radius: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--border-color);
   background: var(--bg-surface);
   color: var(--text-main);
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 .wizard-step-card:hover:not(:disabled) {
   border-color: var(--accent-cyan);
-  transform: translateX(2px);
+  background: rgba(56, 189, 248, 0.08);
+  transform: translateX(3px);
 }
 
 .wizard-step-card.active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.24), rgba(99, 102, 241, 0.22));
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.24), rgba(99, 102, 241, 0.20));
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.25), inset 0 0 12px rgba(56, 189, 248, 0.08);
 }
 
 .wizard-step-card.completed:not(.active) {
   border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.wizard-step-card.completed:not(.active):hover {
+  border-color: #10b981;
 }
 
 .wizard-step-card.locked {
@@ -515,44 +527,86 @@ code {
 }
 
 .step-num-circle {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
   background: var(--secondary-bg);
   color: #e2e8f0;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .wizard-step-card.active .step-num-circle {
-  background: var(--accent-cyan);
+  background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
   color: #060913;
-  box-shadow: 0 0 10px var(--accent-cyan);
+  box-shadow: 0 0 14px var(--accent-cyan);
+  border-color: transparent;
 }
 
 .wizard-step-card.completed:not(.active) .step-num-circle {
   background: rgba(16, 185, 129, 0.25);
   color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 .step-card-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 0.15rem;
 }
 
 .step-card-title {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .step-card-sub {
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-progress {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--secondary-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--primary));
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 .sidebar-actions {

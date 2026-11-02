@@ -19,16 +19,23 @@ import {
   MODELOS_OLLAMA_RECOMENDADOS,
 } from './core/gemini';
 
-const ETIQUETAS_PASOS = [
-  { numero: 1, titulo: '1. Problema', subtitulo: 'Negocio y alcance' },
-  { numero: 2, titulo: '2. Ficha Técnica', subtitulo: 'X, Y y paradigma ML' },
-  { numero: 3, titulo: '3. EDA y Variables', subtitulo: 'Tipos y StandardScaler' },
-  { numero: 4, titulo: '4. Algoritmo', subtitulo: 'K-Means, Jerárquico o DBSCAN' },
-  { numero: 5, titulo: '5. Hiperparámetros', subtitulo: 'Codo y Silueta' },
-  { numero: 6, titulo: '6. Pipeline Python', subtitulo: 'scikit-learn y .ipynb' },
-  { numero: 7, titulo: '7. WASM & Clusters', subtitulo: 'Pyodide y SVG interactivo' },
-  { numero: 8, titulo: '8. Perfilado BI', subtitulo: 'Insights y Power BI' },
-  { numero: 9, titulo: '9. Entregables', subtitulo: 'ZIP, PDF y CSV seguro' },
+export interface PasoMeta {
+  numero: number;
+  icono: string;
+  titulo: string;
+  subtitulo: string;
+}
+
+const ETIQUETAS_PASOS: readonly PasoMeta[] = [
+  { numero: 1, icono: '🎯', titulo: '1. Problema', subtitulo: 'Negocio y formulación' },
+  { numero: 2, icono: '📋', titulo: '2. Ficha Técnica', subtitulo: 'X, Y y paradigma ML' },
+  { numero: 3, icono: '📊', titulo: '3. EDA y Variables', subtitulo: 'Tipos y StandardScaler' },
+  { numero: 4, icono: '🔀', titulo: '4. Algoritmo', subtitulo: 'K-Means, Jerárquico o DBSCAN' },
+  { numero: 5, icono: '🎛️', titulo: '5. Hiperparámetros', subtitulo: 'Codo y Silueta' },
+  { numero: 6, icono: '🐍', titulo: '6. Pipeline Python', subtitulo: 'scikit-learn y .ipynb' },
+  { numero: 7, icono: '⚡', titulo: '7. WASM & Clusters', subtitulo: 'Pyodide y visualización' },
+  { numero: 8, icono: '📈', titulo: '8. Perfilado BI', subtitulo: 'Insights y Power BI' },
+  { numero: 9, icono: '📦', titulo: '9. Entregables', subtitulo: 'ZIP, PDF y CSV seguro' },
 ] as const;
 
 export function App() {
@@ -52,6 +59,7 @@ export function App() {
   } | null>(null);
 
   const [pasoActivo, setPasoActivo] = useState<number>(1);
+  const [pasoMaximoAlcanzado, setPasoMaximoAlcanzado] = useState<number>(1);
 
   const handleCambiarProveedor = (nuevo: ProveedorLLM) => {
     setProveedorSeleccionado(nuevo);
@@ -134,9 +142,18 @@ export function App() {
     }
   };
 
+  const cambiarPaso = (nuevoPaso: number) => {
+    setPasoActivo(nuevoPaso);
+    if (nuevoPaso > pasoMaximoAlcanzado) {
+      setPasoMaximoAlcanzado(nuevoPaso);
+    }
+  };
+
   const puedeGuardar =
     avisoAceptado &&
     (proveedorSeleccionado === 'ollama' || validarFormatoKey(inputKey, proveedorSeleccionado).valida);
+
+  const porcentajeProgreso = Math.round((pasoActivo / 9) * 100);
 
   return (
     <div className="app-shell">
@@ -232,7 +249,7 @@ export function App() {
       )}
 
       {/* Pantalla / Modal de Onboarding BYOK si no hay key guardada */}
-      {!keyGuardada && (
+      {!keyGuardada ? (
         <section
           className="card onboarding-card mb-4"
           aria-labelledby="onboarding-title"
@@ -365,142 +382,198 @@ export function App() {
             </button>
           </form>
         </section>
-      )}
+      ) : (
+        /* Workspace con Layout Homogéneo: Sidebar de Etapas + Estudio Central */
+        <div className="workspace-grid" data-testid="ready-workspace">
+          {/* Panel Lateral: Menú Ergonómico de Etapas Pedagógicas */}
+          <aside className="workspace-sidebar" aria-label="Ruta de aprendizaje">
+            <div className="card sidebar-card">
+              <div className="sidebar-header">
+                <span className="module-tag">Ruta Pedagógica</span>
+                <h2 className="sidebar-title">Ciencia de Datos & ML</h2>
+              </div>
 
-      {/* Barra de progreso de pasos */}
-      <nav className="wizard-progress-bar" aria-label="Progreso del flujo de aprendizaje">
-        <ol className="steps-nav-list">
-          {ETIQUETAS_PASOS.map((paso) => {
-            const estaActivo = paso.numero === pasoActivo;
-            return (
-              <li
-                key={paso.numero}
-                className={`step-nav-item ${estaActivo ? 'active' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="step-nav-button"
-                  onClick={() => setPasoActivo(paso.numero)}
-                  aria-current={estaActivo ? 'step' : undefined}
+              <nav className="wizard-vertical-nav" aria-label="Etapas del asistente">
+                {ETIQUETAS_PASOS.map((paso) => {
+                  const activo = paso.numero === pasoActivo;
+                  const completado = paso.numero < pasoActivo;
+                  return (
+                    <button
+                      key={paso.numero}
+                      type="button"
+                      className={`wizard-step-card ${activo ? 'active' : ''} ${
+                        completado ? 'completed' : ''
+                      }`}
+                      onClick={() => cambiarPaso(paso.numero)}
+                      data-testid={`wizard-step-btn-${paso.numero}`}
+                      aria-current={activo ? 'step' : undefined}
+                    >
+                      <span className="step-num-circle" aria-hidden="true">
+                        {completado ? '✓' : paso.numero}
+                      </span>
+                      <span className="step-card-text">
+                        <span className="step-card-title">
+                          <span style={{ marginRight: '0.35rem' }}>{paso.icono}</span>
+                          {paso.titulo}
+                        </span>
+                        <span className="step-card-sub">{paso.subtitulo}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="sidebar-progress">
+                <div className="progress-header">
+                  <span>Progreso general</span>
+                  <strong>{porcentajeProgreso}%</strong>
+                </div>
+                <div
+                  className="progress-track"
+                  role="progressbar"
+                  aria-valuenow={porcentajeProgreso}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
                 >
-                  <span className="step-nav-number">{paso.numero}</span>
-                  <div className="step-nav-text">
-                    <span className="step-nav-title">{paso.titulo}</span>
-                    <span className="step-nav-subtitle">{paso.subtitulo}</span>
-                  </div>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
-
-      {/* Contenido principal por pasos */}
-      <main id="main-content" tabIndex={-1}>
-        {pasoActivo === 1 && (
-          <section
-            className="card studio-step-card"
-            aria-labelledby="step1-title"
-            data-testid="step1-container"
-          >
-            <div className="step-header">
-              <span className="step-badge">Paso 1 de 8</span>
-              <div>
-                <h2 id="step1-title" className="card-title">
-                  Planteo del Problema de Negocio
-                </h2>
-                <p className="step-lead">
-                  Definí el desafío analítico o comercial que querés abordar con Ciencia de Datos.
-                </p>
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${porcentajeProgreso}%` }}
+                  />
+                </div>
               </div>
             </div>
 
-            <details className="concept-box" data-testid="step1-concept-box">
-              <summary className="concept-summary">
-                💡 Fundamento teórico: Inteligencia de Negocios (BI) vs. Análisis Predictivo (AP / ML)
-              </summary>
-              <div className="concept-content">
+            {/* Recordatorio de seguridad compacto en sidebar */}
+            <details
+              className="concept-box"
+              style={{ marginTop: '0.85rem' }}
+              data-testid="sidebar-security-box"
+            >
+              <summary className="concept-summary">🔒 Seguridad BYOK activa</summary>
+              <div className="concept-content" style={{ fontSize: '0.78rem' }}>
                 <p>
-                  Mientras que la <strong>Inteligencia de Negocios (BI)</strong> responde a qué pasó
-                  en el pasado mediante tableros y KPIs descriptivos, el{' '}
-                  <strong>Aprendizaje Automático (ML)</strong> busca descubrir patrones ocultos,
-                  segmentaciones no evidentes y relaciones probabilísticas para anticipar u
-                  organizar datos no etiquetados.
+                  Clave: <code>{enmascararApiKey(keyGuardada)}</code>
+                </p>
+                <p>
+                  Aislada exclusivamente en <code>sessionStorage</code>. Al cerrar la pestaña se
+                  elimina automáticamente de la memoria.
                 </p>
               </div>
             </details>
+          </aside>
 
-            <div className="tutor-explanation-box">
-              <strong>Tutor IA:</strong>
-              <p>
-                ¡Hola! Soy tu tutor de Ciencia de Datos. Para comenzar, describí con tus propias
-                palabras el problema de negocio o reto analítico que querés resolver. En el Paso 2
-                te ayudaré a estructurar la <strong>Ficha Técnica de Machine Learning</strong>.
-              </p>
-            </div>
-
-            <div className="toolbar-row">
-              <span className="badge badge-secondary">Fase 0 activa: Entorno seguro y conectado.</span>
-            </div>
-
-            <div className="button-group">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setPasoActivo(2)}
-              >
-                Avanzar a Paso 2 →
-              </button>
-            </div>
-          </section>
-        )}
-
-        {pasoActivo > 1 && (
-          <section
-            className="card studio-step-card"
-            aria-labelledby={`step${pasoActivo}-title`}
-            data-testid={`step${pasoActivo}-container`}
-          >
-            <div className="step-header">
-              <span className="step-badge">Paso {pasoActivo} de 8</span>
-              <div>
-                <h2 id={`step${pasoActivo}-title`} className="card-title">
-                  {ETIQUETAS_PASOS[pasoActivo - 1]?.titulo}
-                </h2>
-                <p className="step-lead">
-                  {ETIQUETAS_PASOS[pasoActivo - 1]?.subtitulo}
-                </p>
-              </div>
-            </div>
-
-            <div className="tutor-explanation-box">
-              <strong>Tutor IA:</strong>
-              <p>
-                Módulo en preparación según el plan de desarrollo incremental.
-              </p>
-            </div>
-
-            <div className="button-group">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setPasoActivo(pasoActivo - 1)}
-              >
-                ← Volver al Paso {pasoActivo - 1}
-              </button>
-              {pasoActivo < 9 && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => setPasoActivo(pasoActivo + 1)}
+          {/* Panel Central: Contenido del Paso Activo */}
+          <div className="workspace-center">
+            <main id="main-content" tabIndex={-1}>
+              {pasoActivo === 1 && (
+                <section
+                  className="card studio-step-card"
+                  aria-labelledby="step1-title"
+                  data-testid="step1-container"
                 >
-                  Continuar al Paso {pasoActivo + 1} →
-                </button>
+                  <div className="step-header">
+                    <span className="step-badge">Paso 1 de 8</span>
+                    <div>
+                      <h2 id="step1-title" className="card-title">
+                        Planteo del Problema de Negocio
+                      </h2>
+                      <p className="step-lead">
+                        Definí el desafío analítico o comercial que querés abordar con Ciencia de Datos.
+                      </p>
+                    </div>
+                  </div>
+
+                  <details className="concept-box" data-testid="step1-concept-box">
+                    <summary className="concept-summary">
+                      💡 Fundamento teórico: Inteligencia de Negocios (BI) vs. Análisis Predictivo (AP / ML)
+                    </summary>
+                    <div className="concept-content">
+                      <p>
+                        Mientras que la <strong>Inteligencia de Negocios (BI)</strong> responde a qué pasó
+                        en el pasado mediante tableros y KPIs descriptivos, el{' '}
+                        <strong>Aprendizaje Automático (ML)</strong> busca descubrir patrones ocultos,
+                        segmentaciones no evidentes y relaciones probabilísticas para anticipar u
+                        organizar datos no etiquetados.
+                      </p>
+                    </div>
+                  </details>
+
+                  <div className="tutor-explanation-box">
+                    <strong>Tutor IA:</strong>
+                    <p>
+                      ¡Hola! Soy tu tutor de Ciencia de Datos. Para comenzar, describí con tus propias
+                      palabras el problema de negocio o reto analítico que querés resolver. En el Paso 2
+                      te ayudaré a estructurar la <strong>Ficha Técnica de Machine Learning</strong>.
+                    </p>
+                  </div>
+
+                  <div className="toolbar-row">
+                    <span className="badge badge-secondary">
+                      Fase 0 activa: Entorno seguro y conectado.
+                    </span>
+                  </div>
+
+                  <div className="button-group">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => cambiarPaso(2)}
+                    >
+                      Avanzar a Paso 2 (Ficha Técnica) →
+                    </button>
+                  </div>
+                </section>
               )}
-            </div>
-          </section>
-        )}
-      </main>
+
+              {pasoActivo > 1 && (
+                <section
+                  className="card studio-step-card"
+                  aria-labelledby={`step${pasoActivo}-title`}
+                  data-testid={`step${pasoActivo}-container`}
+                >
+                  <div className="step-header">
+                    <span className="step-badge">Paso {pasoActivo} de 8</span>
+                    <div>
+                      <h2 id={`step${pasoActivo}-title`} className="card-title">
+                        {ETIQUETAS_PASOS[pasoActivo - 1]?.titulo}
+                      </h2>
+                      <p className="step-lead">
+                        {ETIQUETAS_PASOS[pasoActivo - 1]?.subtitulo}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="tutor-explanation-box">
+                    <strong>Tutor IA:</strong>
+                    <p>
+                      Módulo en preparación según el plan de desarrollo incremental (Fase {pasoActivo}).
+                    </p>
+                  </div>
+
+                  <div className="button-group">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => cambiarPaso(pasoActivo - 1)}
+                    >
+                      ← Volver al Paso {pasoActivo - 1}
+                    </button>
+                    {pasoActivo < 9 && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => cambiarPaso(pasoActivo + 1)}
+                      >
+                        Continuar al Paso {pasoActivo + 1} →
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+            </main>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

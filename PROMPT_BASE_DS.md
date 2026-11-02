@@ -15,14 +15,27 @@ La especificación completa está en `@[PLAN_data_science_tutor_BYOK.md]`.
 - **Anti-XSS y CSP:** Cero scripts/CDNs externos. Prohibido `dangerouslySetInnerHTML`. CSP estricta en `vercel.json` y `public/_headers`.
 - **IA como Tutor Socrático:** No asume; formula preguntas guiadas si hay ambigüedad. Salidas siempre en JSON estructurado validadas con **Zod**. El estudiante confirma cada decisión técnica (la IA no impone modelos).
 - **Exportaciones Seguras:** Protección estricta contra inyección de fórmulas en CSV (`'`, `=`, `+`, `-`, `@`, tab). Los entregables en ZIP son auditados en memoria para asegurar que jamás contengan la API key.
-- **Diseño Visual Homogéneo y Consistente (Design System):**
-  Todos los pasos del wizard (Pasos 1 al 8 y Entregables) DEBEN respetar estrictamente la misma estructura visual, jerarquía y clases CSS:
-  1. *Contenedor raíz del paso:* `<section className="card studio-step-card" aria-labelledby="stepX-title" data-testid="stepX-container">`.
-  2. *Encabezado unificado:* `<div className="step-header"><span className="step-badge">Paso X de 8</span><div><h2 id="stepX-title" className="card-title">...</h2><p className="step-lead">...</p></div></div>`.
-  3. *Caja conceptual pedagógica:* `<details className="concept-box" data-testid="stepX-concept-box"><summary className="concept-summary">💡 Fundamento teórico: ...</summary><div className="concept-content">...</div></details>`.
-  4. *Bloque de explicación del tutor IA:* `<div className="tutor-explanation-box"><strong>Tutor IA:</strong><p>...</p></div>`.
-  5. *Barra de herramientas:* `<div className="toolbar-row">...</div>`.
-  6. *Navegación inferior:* `<div className="button-group"><button className="btn btn-secondary">← Volver...</button><button className="btn btn-primary">Confirmar y Avanzar...</button></div>`.
+- **Diseño Visual Homogéneo y Consistente (Design System & UX):**
+  Todos los pasos del wizard (Pasos 1 al 8 y Entregables) y el entorno de trabajo DEBEN respetar estrictamente la misma estructura visual, jerarquía y clases CSS:
+  1. *Layout del Workspace (2 Columnas ergonómicas):*
+     - Contenedor raíz: `<div className="workspace-grid" data-testid="ready-workspace">`.
+     - Columna lateral: `<aside className="workspace-sidebar" aria-label="Ruta de aprendizaje">`.
+     - Columna central de estudio: `<div className="workspace-center"><main id="main-content">...`.
+  2. *Menú de Etapas Pedagógicas (Sidebar de Navegación Amigable y Ergonómico):*
+     - Tarjeta del sidebar: `<div className="card sidebar-card">`.
+     - Cabecera del sidebar: `<div className="sidebar-header"><span className="module-tag">Ruta Pedagógica</span><h2 className="sidebar-title">Ciencia de Datos & ML</h2></div>`.
+     - Lista de etapas: `<nav className="wizard-vertical-nav" aria-label="Etapas del asistente">`.
+     - Botones de paso tipo tarjeta: `<button className="wizard-step-card [active] [completed]" data-testid="wizard-step-btn-X">`.
+       - Insignia circular con número o checkmark completado: `<span className="step-num-circle">{completado ? '✓' : paso.numero}</span>`.
+       - Texto jerarquizado con ícono: `<span className="step-card-text"><span className="step-card-title">{icono} {titulo}</span><span className="step-card-sub">{subtitulo}</span></span>`.
+     - Barra de progreso visual con degradado cyan-indigo: `<div className="sidebar-progress"><div className="progress-header"><span>Progreso general</span><strong>...%</strong></div><div className="progress-track"><div className="progress-fill" style={{ width: '...%' }} /></div></div>`.
+     - *Regla UX estricta:* Prohibido crear listas planas, desalineadas o sin estilos gráficos (`<ol>`, `<nav>` ad-hoc). Cada etapa debe tener microinteracciones hover, estado activo resaltado con glow cyan (`var(--accent-cyan)`), badges claros y legibilidad óptima para una experiencia de usuario fluida y amigable.
+  3. *Contenedor raíz del paso activo:* `<section className="card studio-step-card" aria-labelledby="stepX-title" data-testid="stepX-container">`.
+  4. *Encabezado unificado:* `<div className="step-header"><span className="step-badge">Paso X de 8</span><div><h2 id="stepX-title" className="card-title">...</h2><p className="step-lead">...</p></div></div>`.
+  5. *Caja conceptual pedagógica:* `<details className="concept-box" data-testid="stepX-concept-box"><summary className="concept-summary">💡 Fundamento teórico: ...</summary><div className="concept-content">...</div></details>`.
+  6. *Bloque de explicación del tutor IA:* `<div className="tutor-explanation-box"><strong>Tutor IA:</strong><p>...</p></div>`.
+  7. *Barra de herramientas:* `<div className="toolbar-row">...</div>`.
+  8. *Navegación inferior:* `<div className="button-group"><button className="btn btn-secondary">← Volver...</button><button className="btn btn-primary">Confirmar y Avanzar...</button></div>`.
   *Prohibido inventar clases ad-hoc o contenedores externos que rompan la coherencia visual.*
 
 ## 3. Flujo de Trabajo para el Agente
