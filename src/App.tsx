@@ -40,7 +40,7 @@ export function App() {
   const [avisoAceptado, setAvisoAceptado] = useState<boolean>(false);
   const [probando, setProbando] = useState<boolean>(false);
   const [modeloSeleccionado, setModeloSeleccionado] = useState<string>(() => obtenerModeloActivo());
-  const [modelosOpciones] = useState<string[]>(() => {
+  const [modelosOpciones, setModelosOpciones] = useState<string[]>(() => {
     const prov = obtenerProveedorActivo();
     if (prov === 'ollama') return [...MODELOS_OLLAMA_RECOMENDADOS];
     if (prov === 'openrouter') return [...MODELOS_OPENROUTER_GRATIS_DEFAULT];
@@ -59,12 +59,15 @@ export function App() {
     if (nuevo === 'gemini') {
       establecerModeloActivo(GEMINI_MODEL);
       setModeloSeleccionado(GEMINI_MODEL);
+      setModelosOpciones([...MODELOS_ALTERNATIVOS]);
     } else if (nuevo === 'openrouter') {
       establecerModeloActivo(MODELOS_OPENROUTER_GRATIS_DEFAULT[0]);
       setModeloSeleccionado(MODELOS_OPENROUTER_GRATIS_DEFAULT[0]);
+      setModelosOpciones([...MODELOS_OPENROUTER_GRATIS_DEFAULT]);
     } else {
       establecerModeloActivo(MODELOS_OLLAMA_RECOMENDADOS[0]);
       setModeloSeleccionado(MODELOS_OLLAMA_RECOMENDADOS[0]);
+      setModelosOpciones([...MODELOS_OLLAMA_RECOMENDADOS]);
     }
   };
 

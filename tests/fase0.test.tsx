@@ -209,14 +209,21 @@ describe('Soporte Multi-Proveedor LLM (OpenRouter Free Tier, Ollama Local y Robu
     expect(validarFormatoKey('cualquier-cosa', 'ollama').valida).toBe(true);
   });
 
-  it('establece gemini-3.8-flash como modelo por defecto de Gemini y lo normaliza a gemini-2.0-flash para la API', async () => {
-    const { GEMINI_MODEL, obtenerModeloActivo, normalizarModeloGemini } = await import(
+  it('establece gemini-3.8-flash como modelo por defecto de Gemini y define la lista curada de modelos', async () => {
+    const { GEMINI_MODEL, MODELOS_ALTERNATIVOS, obtenerModeloActivo, normalizarModeloGemini } = await import(
       '../src/core/gemini'
     );
     expect(GEMINI_MODEL).toBe('gemini-3.8-flash');
     expect(obtenerModeloActivo()).toBe('gemini-3.8-flash');
+    expect(MODELOS_ALTERNATIVOS).toEqual([
+      'gemini-3.8-flash',
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
+    ]);
     expect(normalizarModeloGemini('gemini-3.8-flash')).toBe('gemini-2.0-flash');
-    expect(normalizarModeloGemini('gemini-2.5-flash')).toBe('gemini-2.0-flash');
+    expect(normalizarModeloGemini('gemini-3.5-flash')).toBe('gemini-2.0-flash');
+    expect(normalizarModeloGemini('gemini-3.5-flash-lite')).toBe('gemini-2.0-flash');
   });
 
   it('extraerJsonDeTexto extrae correctamente objetos JSON incluso con texto previo o formato markdown irregular', async () => {
