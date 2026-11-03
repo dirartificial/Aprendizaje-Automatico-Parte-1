@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 const securityHeaders = {
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai http://localhost:11434 http://127.0.0.1:11434 https://cdn.jsdelivr.net; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',

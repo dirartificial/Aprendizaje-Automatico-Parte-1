@@ -133,15 +133,91 @@ code {
   color: var(--text-muted);
 }
 
-.key-status-bar {
+.header-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.header-utility-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.key-status-group,
+.key-status-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.55rem;
-  background: var(--bg-input);
+  background: rgba(15, 23, 42, 0.7);
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
-  padding: 0.45rem 0.75rem;
+  padding: 0.35rem 0.65rem;
+}
+
+.llm-selector-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.select-provider {
+  font-size: 0.78rem;
+  padding: 0.28rem 0.45rem;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  cursor: pointer;
+  max-width: 140px;
+}
+
+.select-provider:focus {
+  outline: none;
+}
+
+.model-select-wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+
+.select-model {
+  font-size: 0.78rem;
+  padding: 0.28rem 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 0.35rem;
+  color: var(--text-main);
+  cursor: pointer;
+  max-width: 210px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-model:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.masked-key-tag,
+.key-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.35rem;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .status-dot-online {
@@ -156,16 +232,6 @@ code {
 .key-label {
   font-size: 0.8rem;
   color: var(--text-muted);
-}
-
-.key-badge {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.8rem;
-  background: rgba(99, 102, 241, 0.16);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #c7d2fe;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.35rem;
 }
 
 /* --- Live AI Thinking / Processing HUD --- */
@@ -1744,6 +1810,28 @@ textarea.form-control {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 
+[data-theme="light"] .key-status-group,
+[data-theme="light"] .key-status-bar {
+  background: #f1f5f9;
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
+[data-theme="light"] .llm-selector-cluster {
+  background: #ffffff;
+  border-color: rgba(100, 116, 139, 0.28);
+}
+
+[data-theme="light"] .select-model {
+  background: #ffffff;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+[data-theme="light"] .masked-key-tag {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: #4338ca;
+}
+
 [data-theme="light"] .code-viewer-container {
   background: #f8fafc !important;
   border-color: rgba(100, 116, 139, 0.3) !important;
@@ -1879,4 +1967,622 @@ textarea.form-control {
 .glossary-toolbar {
   padding-top: 1rem;
 }
+
+/* --- Fase 4: Pipeline de Python y Jupyter Notebook (Paso 6) --- */
+
+.code-tabs-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.code-tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.code-tab-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.code-tab-btn:hover {
+  background: var(--secondary-hover);
+  color: var(--text-main);
+  border-color: var(--accent-cyan);
+}
+
+.code-tab-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.code-tab-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.code-viewer-container {
+  background: #070b14;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.code-viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.code-file-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+.code-viewer-pre {
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  max-height: 480px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+  tab-size: 4;
+}
+
+/* Modo Explicación Línea por Línea */
+.line-by-line-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .line-by-line-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.code-interactive-list {
+  background: #070b14;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0.75rem;
+  overflow-y: auto;
+  max-height: 520px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+}
+
+.code-interactive-section-header {
+  background: #111a33;
+  padding: 0.5rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+
+.code-interactive-row {
+  display: flex;
+  align-items: stretch;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 0.15s ease;
+}
+
+.code-interactive-row:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.code-interactive-row.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-left: 3px solid var(--accent-cyan);
+}
+
+.code-gutter-num {
+  width: 42px;
+  padding: 0.35rem 0.5rem;
+  text-align: right;
+  color: #475569;
+  user-select: none;
+  background: rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.75rem;
+}
+
+.code-row-text {
+  padding: 0.35rem 0.75rem;
+  white-space: pre;
+  color: #cbd5e1;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.explanation-side-card {
+  background: var(--bg-card-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1.1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.explanation-concept-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--accent-cyan);
+}
+
+.socratic-question-box {
+  background: rgba(99, 102, 241, 0.12);
+  border-left: 3px solid var(--accent-indigo);
+  padding: 0.75rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-size: 0.82rem;
+  color: #c7d2fe;
+}
+
+/* Vista previa de Notebook Jupyter (.ipynb) */
+.notebook-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.notebook-cell-item {
+  border-radius: 0.65rem;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.notebook-cell-item.cell-markdown {
+  border-left: 4px solid var(--accent-cyan);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.notebook-cell-item.cell-code {
+  border-left: 4px solid var(--accent-indigo);
+  background: #070b14;
+}
+
+.notebook-cell-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.notebook-cell-content {
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.notebook-cell-content pre {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  overflow-x: auto;
+}
+
+/* Sección de Consulta Socrática a la IA */
+.ask-tutor-container {
+  margin-top: 1.25rem;
+  background: rgba(16, 24, 45, 0.75);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.ask-tutor-form {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.ask-tutor-input {
+  flex: 1;
+}
+
+.ask-tutor-response-box {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  animation: fadeIn 0.3s ease;
+}
+
+/* --- Fase 5: Ejecución WASM con Pyodide y Visualización 2D (Paso 7) --- */
+
+.wasm-execution-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.85rem 1.15rem;
+  background: var(--bg-card-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.wasm-status-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.85rem;
+}
+
+.scatter-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .scatter-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scatter-svg-wrapper {
+  background: #060913;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.scatter-svg {
+  width: 100%;
+  height: auto;
+  max-height: 440px;
+  user-select: none;
+}
+
+.scatter-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+}
+
+.scatter-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.scatter-legend-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.scatter-point-circle {
+  cursor: pointer;
+  transition: r 0.15s ease, opacity 0.15s ease;
+}
+
+.scatter-point-circle:hover {
+  r: 8px;
+  stroke: #ffffff;
+  stroke-width: 2px;
+}
+
+/* Terminal Console Viewer */
+.terminal-viewer-container {
+  background: #050811;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  margin-bottom: 1.5rem;
+}
+
+.terminal-viewer-header {
+  background: #0e1526;
+  padding: 0.45rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot-red { background: #ef4444; }
+.terminal-dot-yellow { background: #f59e0b; }
+.terminal-dot-green { background: #10b981; }
+
+.terminal-viewer-body {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  max-height: 280px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #38bdf8;
+  white-space: pre-wrap;
+  background: #050811;
+}
+
+/* Grilla de Métricas Reales */
+.metricas-wasm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.metrica-wasm-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.metrica-wasm-val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  margin-top: 0.2rem;
+}
+
+.metrica-wasm-lbl {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+[data-theme="light"] .scatter-svg-wrapper {
+  background: #ffffff !important;
+  border-color: rgba(100, 116, 139, 0.25) !important;
+}
+
+[data-theme="light"] .terminal-viewer-container {
+  background: #f8fafc !important;
+  border-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+[data-theme="light"] .terminal-viewer-header {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .terminal-viewer-body {
+  background: #f8fafc !important;
+  color: #0369a1 !important;
+}
+
+/* --- Fase 6: Perfilado de Negocio y Power BI (Paso 8) --- */
+
+.perfiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.perfil-cluster-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.perfil-cluster-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 8px 25px rgba(56, 189, 248, 0.15);
+}
+
+.perfil-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.perfil-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.perfil-badge-pct {
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  white-space: nowrap;
+}
+
+.perfil-caracteristicas-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.perfil-accion-box {
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 3px solid var(--border-success);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-size: 0.84rem;
+  color: var(--text-success);
+}
+
+.perfil-accion-box strong {
+  display: block;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+  color: var(--text-success);
+}
+
+/* Sección Power BI y Medidas DAX */
+.powerbi-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .powerbi-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dax-measure-card {
+  background: #070b14;
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.dax-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.dax-name {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  font-size: 0.86rem;
+}
+
+.dax-formula-pre {
+  margin: 0.4rem 0;
+  padding: 0.6rem 0.75rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 0.4rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: #a5f3fc;
+  overflow-x: auto;
+}
+
+/* Tarjeta Ejecutiva de Stakeholders */
+.sintesis-ejecutiva-card {
+  background: linear-gradient(145deg, rgba(16, 24, 45, 0.9), rgba(12, 18, 34, 0.95));
+  border: 1px solid var(--border-color);
+  border-radius: 0.85rem;
+  padding: 1.5rem;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  margin-bottom: 1.5rem;
+}
+
+.sintesis-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+
+
 

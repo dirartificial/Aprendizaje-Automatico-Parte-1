@@ -21,6 +21,25 @@ import {
   listarModelosOpenRouterGratuitos,
   MODELOS_OLLAMA_RECOMENDADOS,
 } from './core/gemini';
+import {
+  AlgoritmoClustering,
+  FichaTecnicaDS,
+  HiperparametrosClustering,
+  MetricasEvaluacion,
+  PerfilCluster,
+} from './core/schemas';
+import { PRESETS_CASOS_DS } from './core/presetsDS';
+import { cargarProyectoDeIDB } from './core/storageDS';
+import { Step1ProblemaDS } from './steps/Step1ProblemaDS';
+import { Step2FichaTecnicaDS } from './steps/Step2FichaTecnicaDS';
+import { Step3EstructuraDatosDS } from './steps/Step3EstructuraDatosDS';
+import { Step4SeleccionAlgoritmoDS } from './steps/Step4SeleccionAlgoritmoDS';
+import { Step5HiperparametrosDS } from './steps/Step5HiperparametrosDS';
+import { Step6PipelinePythonDS } from './steps/Step6PipelinePythonDS';
+import { Step7EjecucionWasmDS } from './steps/Step7EjecucionWasmDS';
+import { Step8PerfiladoBIDS } from './steps/Step8PerfiladoBIDS';
+import { StepEntregablesDS } from './steps/StepEntregablesDS';
+import { GlossaryModalDS } from './steps/GlossaryModalDS';
 
 export interface PasoMeta {
   numero: number;
@@ -64,6 +83,69 @@ export function App() {
 
   const [pasoActivo, setPasoActivo] = useState<number>(1);
   const [pasoMaximoAlcanzado, setPasoMaximoAlcanzado] = useState<number>(1);
+
+  const [tema, setTema] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const guardado = window.localStorage.getItem('ds_tutor_theme');
+      if (guardado === 'light' || guardado === 'dark') return guardado;
+    }
+    return 'dark';
+  });
+  const [glosarioAbierto, setGlosarioAbierto] = useState<boolean>(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', tema);
+  }, [tema]);
+
+  const toggleTema = () => {
+    setTema((prev) => {
+      const siguiente = prev === 'dark' ? 'light' : 'dark';
+      try {
+        window.localStorage.setItem('ds_tutor_theme', siguiente);
+      } catch {
+        // Ignora errores si localStorage está bloqueado
+      }
+      return siguiente;
+    });
+  };
+
+  const [problema, setProblema] = useState<string>(
+    () => PRESETS_CASOS_DS[0]?.problemaTexto || ''
+  );
+  const [fichaTecnica, setFichaTecnica] = useState<FichaTecnicaDS>(
+    () => PRESETS_CASOS_DS[0]?.fichaTecnicaInicial
+  );
+  const [algoritmoSeleccionado, setAlgoritmoSeleccionado] = useState<AlgoritmoClustering>('kmeans');
+  const [hiperparametros, setHiperparametros] = useState<HiperparametrosClustering | undefined>(
+    undefined
+  );
+  const [metricas, setMetricas] = useState<MetricasEvaluacion | undefined>(undefined);
+  const [perfiles, setPerfiles] = useState<PerfilCluster[] | undefined>(undefined);
+
+  useEffect(() => {
+    void cargarProyectoDeIDB().then((proyectoGuardado) => {
+      if (proyectoGuardado) {
+        if (proyectoGuardado.problemaOriginal) {
+          setProblema(proyectoGuardado.problemaOriginal);
+        }
+        if (proyectoGuardado.fichaTecnica) {
+          setFichaTecnica(proyectoGuardado.fichaTecnica);
+        }
+        if (proyectoGuardado.hiperparametros) {
+          setHiperparametros(proyectoGuardado.hiperparametros);
+          if (proyectoGuardado.hiperparametros.algoritmo) {
+            setAlgoritmoSeleccionado(proyectoGuardado.hiperparametros.algoritmo);
+          }
+        }
+        if (proyectoGuardado.metricas) {
+          setMetricas(proyectoGuardado.metricas);
+        }
+        if (proyectoGuardado.perfiles) {
+          setPerfiles(proyectoGuardado.perfiles);
+        }
+      }
+    });
+  }, []);
 
   const cargarModelosParaProveedor = async (nuevo: ProveedorLLM, keyEspecifica?: string) => {
     setCargandoModelos(true);
@@ -217,47 +299,49 @@ export function App() {
             <div className="key-status-group">
               <span className="badge badge-success">Sesión Activa</span>
 
-              {/* Selector de proveedor rápido */}
-              <select
-                className="input input-sm select-provider"
-                value={proveedorSeleccionado}
-                onChange={(e) => handleCambiarProveedor(e.target.value as ProveedorLLM)}
-                title="Cambiar proveedor LLM activo"
-              >
-                <option value="gemini">Google Gemini</option>
-                <option value="openrouter">OpenRouter (:free)</option>
-                <option value="ollama">Ollama Local</option>
-              </select>
+              {/* Selector agrupado de proveedor y modelo LLM */}
+              <div className="llm-selector-cluster" title="Configuración de Proveedor y Modelo LLM">
+                <select
+                  className="input input-sm select-provider"
+                  value={proveedorSeleccionado}
+                  onChange={(e) => handleCambiarProveedor(e.target.value as ProveedorLLM)}
+                  title="Cambiar proveedor LLM activo"
+                >
+                  <option value="gemini">Google Gemini</option>
+                  <option value="openrouter">OpenRouter (:free)</option>
+                  <option value="ollama">Ollama Local</option>
+                </select>
+
+                <div className="model-select-wrapper">
+                  <label htmlFor="model-select" className="sr-only">
+                    Modelo activo
+                  </label>
+                  <select
+                    id="model-select"
+                    className="input input-sm select-model"
+                    value={modeloSeleccionado}
+                    onChange={(e) => {
+                      const nuevo = e.target.value;
+                      setModeloSeleccionado(nuevo);
+                      establecerModeloActivo(nuevo);
+                    }}
+                    disabled={cargandoModelos}
+                    title="Modelo LLM activo"
+                  >
+                    {modelosOpciones.map((m) => (
+                      <option key={m} value={m}>
+                        {m === 'openrouter/free'
+                          ? 'openrouter/free (Auto-Router)'
+                          : m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               <span className="masked-key-tag" data-testid="masked-key">
                 {enmascararApiKey(keyGuardada)}
               </span>
-
-              {/* Selector de modelo activo */}
-              <div className="model-select-wrapper">
-                <label htmlFor="model-select" className="sr-only">
-                  Modelo activo
-                </label>
-                <select
-                  id="model-select"
-                  className="input input-sm select-model"
-                  value={modeloSeleccionado}
-                  onChange={(e) => {
-                    const nuevo = e.target.value;
-                    setModeloSeleccionado(nuevo);
-                    establecerModeloActivo(nuevo);
-                  }}
-                  disabled={cargandoModelos}
-                >
-                  {modelosOpciones.map((m) => (
-                    <option key={m} value={m}>
-                      {m === 'openrouter/free'
-                        ? 'openrouter/free (Auto-Router: se acomoda al mejor disponible)'
-                        : m}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               <button
                 type="button"
@@ -277,6 +361,29 @@ export function App() {
               </button>
             </div>
           )}
+
+          <div className="header-utility-group">
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              data-testid="open-glossary-btn"
+              onClick={() => setGlosarioAbierto(true)}
+              title="Abrir glosario pedagógico interactivo de conceptos"
+              aria-label="Abrir glosario conceptual"
+            >
+              📖 Glosario
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              data-testid="toggle-theme-btn"
+              onClick={toggleTema}
+              title={`Cambiar a modo ${tema === 'dark' ? 'claro' : 'oscuro'}`}
+              aria-label={`Cambiar a modo ${tema === 'dark' ? 'claro' : 'oscuro'}`}
+            >
+              {tema === 'dark' ? '☀️ Claro' : '🌙 Oscuro'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -620,114 +727,127 @@ export function App() {
           <div className="workspace-center">
             <main id="main-content" tabIndex={-1}>
               {pasoActivo === 1 && (
-                <section
-                  className="card studio-step-card"
-                  aria-labelledby="step1-title"
-                  data-testid="step1-container"
-                >
-                  <div className="step-header">
-                    <span className="step-badge">Paso 1 de 8</span>
-                    <div>
-                      <h2 id="step1-title" className="card-title">
-                        Planteo del Problema de Negocio
-                      </h2>
-                      <p className="step-lead">
-                        Definí el desafío analítico o comercial que querés abordar con Ciencia de Datos.
-                      </p>
-                    </div>
-                  </div>
-
-                  <details className="concept-box" data-testid="step1-concept-box">
-                    <summary className="concept-summary">
-                      💡 Fundamento teórico: Inteligencia de Negocios (BI) vs. Análisis Predictivo (AP / ML)
-                    </summary>
-                    <div className="concept-content">
-                      <p>
-                        Mientras que la <strong>Inteligencia de Negocios (BI)</strong> responde a qué pasó
-                        en el pasado mediante tableros y KPIs descriptivos, el{' '}
-                        <strong>Aprendizaje Automático (ML)</strong> busca descubrir patrones ocultos,
-                        segmentaciones no evidentes y relaciones probabilísticas para anticipar u
-                        organizar datos no etiquetados.
-                      </p>
-                    </div>
-                  </details>
-
-                  <div className="tutor-explanation-box">
-                    <strong>Tutor IA:</strong>
-                    <p>
-                      ¡Hola! Soy tu tutor de Ciencia de Datos. Para comenzar, describí con tus propias
-                      palabras el problema de negocio o reto analítico que querés resolver. En el Paso 2
-                      te ayudaré a estructurar la <strong>Ficha Técnica de Machine Learning</strong>.
-                    </p>
-                  </div>
-
-                  <div className="toolbar-row">
-                    <span className="badge badge-secondary">
-                      Fase 0 activa: Entorno seguro y conectado ({proveedorSeleccionado.toUpperCase()} • {modeloSeleccionado}).
-                    </span>
-                  </div>
-
-                  <div className="button-group">
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => cambiarPaso(2)}
-                    >
-                      Avanzar a Paso 2 (Ficha Técnica) →
-                    </button>
-                  </div>
-                </section>
+                <Step1ProblemaDS
+                  problema={problema}
+                  onActualizarProblema={setProblema}
+                  onAvanzarAPaso2={(fichaGenerada) => {
+                    setFichaTecnica(fichaGenerada);
+                    cambiarPaso(2);
+                  }}
+                />
               )}
 
-              {pasoActivo > 1 && (
-                <section
-                  className="card studio-step-card"
-                  aria-labelledby={`step${pasoActivo}-title`}
-                  data-testid={`step${pasoActivo}-container`}
-                >
-                  <div className="step-header">
-                    <span className="step-badge">Paso {pasoActivo} de 8</span>
-                    <div>
-                      <h2 id={`step${pasoActivo}-title`} className="card-title">
-                        {ETIQUETAS_PASOS[pasoActivo - 1]?.titulo}
-                      </h2>
-                      <p className="step-lead">
-                        {ETIQUETAS_PASOS[pasoActivo - 1]?.subtitulo}
-                      </p>
-                    </div>
-                  </div>
+              {pasoActivo === 2 && (
+                <Step2FichaTecnicaDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  onActualizarFichaTecnica={setFichaTecnica}
+                  onAvanzarAPaso3={() => cambiarPaso(3)}
+                  onVolverAPaso1={() => cambiarPaso(1)}
+                />
+              )}
 
-                  <div className="tutor-explanation-box">
-                    <strong>Tutor IA:</strong>
-                    <p>
-                      Módulo en preparación según el plan de desarrollo incremental (Fase {pasoActivo}).
-                    </p>
-                  </div>
+              {pasoActivo === 3 && (
+                <Step3EstructuraDatosDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  onActualizarFichaTecnica={setFichaTecnica}
+                  onAvanzarAPaso4={() => cambiarPaso(4)}
+                  onVolverAPaso2={() => cambiarPaso(2)}
+                />
+              )}
 
-                  <div className="button-group">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => cambiarPaso(pasoActivo - 1)}
-                    >
-                      ← Volver al Paso {pasoActivo - 1}
-                    </button>
-                    {pasoActivo < 9 && (
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={() => cambiarPaso(pasoActivo + 1)}
-                      >
-                        Continuar al Paso {pasoActivo + 1} →
-                      </button>
-                    )}
-                  </div>
-                </section>
+              {pasoActivo === 4 && (
+                <Step4SeleccionAlgoritmoDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  algoritmoSeleccionado={algoritmoSeleccionado}
+                  hiperparametros={hiperparametros}
+                  onActualizarAlgoritmo={setAlgoritmoSeleccionado}
+                  onActualizarFichaTecnica={setFichaTecnica}
+                  onActualizarHiperparametros={setHiperparametros}
+                  onAvanzarAPaso5={() => cambiarPaso(5)}
+                  onVolverAPaso3={() => cambiarPaso(3)}
+                />
+              )}
+
+              {pasoActivo === 5 && (
+                <Step5HiperparametrosDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  algoritmoSeleccionado={algoritmoSeleccionado}
+                  hiperparametros={hiperparametros}
+                  metricas={metricas}
+                  onActualizarHiperparametros={setHiperparametros}
+                  onActualizarMetricas={setMetricas}
+                  onAvanzarAPaso6={() => cambiarPaso(6)}
+                  onVolverAPaso4={() => cambiarPaso(4)}
+                />
+              )}
+
+              {pasoActivo === 6 && (
+                <Step6PipelinePythonDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  algoritmoSeleccionado={algoritmoSeleccionado}
+                  hiperparametros={hiperparametros}
+                  metricas={metricas}
+                  onAvanzarAPaso7={() => cambiarPaso(7)}
+                  onVolverAPaso5={() => cambiarPaso(5)}
+                />
+              )}
+
+              {pasoActivo === 7 && (
+                <Step7EjecucionWasmDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  algoritmoSeleccionado={algoritmoSeleccionado}
+                  hiperparametros={hiperparametros}
+                  metricas={metricas}
+                  onActualizarMetricas={setMetricas}
+                  onAvanzarAPaso8={() => cambiarPaso(8)}
+                  onVolverAPaso6={() => cambiarPaso(6)}
+                />
+              )}
+
+              {pasoActivo === 8 && (
+                <Step8PerfiladoBIDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  algoritmoSeleccionado={algoritmoSeleccionado}
+                  hiperparametros={hiperparametros}
+                  metricas={metricas}
+                  perfiles={perfiles}
+                  onActualizarPerfiles={setPerfiles}
+                  onAvanzarAPaso9={() => cambiarPaso(9)}
+                  onVolverAPaso7={() => cambiarPaso(7)}
+                />
+              )}
+
+              {pasoActivo === 9 && (
+                <StepEntregablesDS
+                  fichaTecnica={fichaTecnica}
+                  problemaOriginal={problema}
+                  algoritmoSeleccionado={algoritmoSeleccionado}
+                  hiperparametros={hiperparametros}
+                  metricas={metricas}
+                  perfiles={perfiles}
+                  onVolverAPaso8={() => cambiarPaso(8)}
+                  onReiniciarProyecto={() => {
+                    cambiarPaso(1);
+                  }}
+                />
               )}
             </main>
           </div>
         </div>
       )}
+
+      {/* Modal accesible del Glosario Conceptual */}
+      <GlossaryModalDS
+        abierto={glosarioAbierto}
+        onCerrar={() => setGlosarioAbierto(false)}
+      />
     </div>
   );
 }

@@ -814,3 +814,36 @@ export async function consultarGeminiEstructurado<T>(params: {
 }
 
 export const consultarLLMEstructurado = consultarGeminiEstructurado;
+
+/**
+ * Ejecuta una consulta de texto libre con el tutor LLM (Gemini, OpenRouter u Ollama).
+ */
+export async function consultarGeminiTexto(params: {
+  prompt: string;
+  systemInstruction?: string;
+}): Promise<string> {
+  const proveedor = determinarProveedorEfectivo();
+  let key = obtenerApiKey();
+  if (!key && proveedor === 'ollama') {
+    key = 'ollama-local';
+  }
+  if (!key) {
+    throw new Error('No hay una API key activa en esta sesión.');
+  }
+
+  const cliente = obtenerClienteActivo(key);
+  try {
+    const rawText = await cliente.generarContenido({
+      modelo: modeloActivo,
+      prompt: params.prompt,
+      systemInstruction: params.systemInstruction,
+      respuestaJson: false,
+    });
+    return rawText.trim();
+  } catch (err) {
+    const clasificado = clasificarErrorGemini(err, key);
+    throw new Error(clasificado.mensaje);
+  }
+}
+
+export const consultarLLMTexto = consultarGeminiTexto;

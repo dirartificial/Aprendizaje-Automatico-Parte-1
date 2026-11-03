@@ -5,3 +5,6 @@ dist
 !.env.example
 *.local
 coverage
+PROMPT_BASE_DS.md
+PLAN_data_science_tutor_BYOK.md
+cd
