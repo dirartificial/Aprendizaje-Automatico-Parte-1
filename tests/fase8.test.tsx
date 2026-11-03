@@ -220,7 +220,7 @@ describe('Fase 8 — Coherencia Matemática End-to-End y Dominios Personalizados
     const res = ejecutarPipelineFallbackLocal({
       fichaTecnica: fichaClinicaPersonalizada,
       algoritmo: 'kmeans',
-      hiperparametros: { algoritmo: 'kmeans', nClusters: 3, init: 'k-means++', maxIter: 300 },
+      hiperparametros: { algoritmo: 'kmeans', k: 3, init: 'k-means++', maxIter: 300 },
     });
 
     expect(res.resumenClusters.length).toBe(3);
@@ -240,7 +240,7 @@ describe('Fase 8 — Coherencia Matemática End-to-End y Dominios Personalizados
     const res = ejecutarPipelineFallbackLocal({
       fichaTecnica: fichaClinicaPersonalizada,
       algoritmo: 'kmeans',
-      hiperparametros: { algoritmo: 'kmeans', nClusters: 3, init: 'k-means++', maxIter: 300 },
+      hiperparametros: { algoritmo: 'kmeans', k: 3, init: 'k-means++', maxIter: 300 },
     });
 
     const perfiles = generarPerfilesDeNegocio({
