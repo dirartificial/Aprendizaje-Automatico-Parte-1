@@ -10,6 +10,7 @@ import {
   AdvertenciaValidacionDS,
 } from '../core/modelValidatorDS';
 import { guardarProyectoEnIDB, registrarDecisionEnIDB } from '../core/storageDS';
+import { consultarTutorContextualDS } from '../core/clarityDS';
 
 export interface Step4SeleccionAlgoritmoDSProps {
   fichaTecnica: FichaTecnicaDS;
@@ -92,6 +93,24 @@ const ALGORITMOS_INFO: AlgoritmoCardInfo[] = [
   },
 ];
 
+function redactarJustificacionContextual(
+  algoritmo: AlgoritmoClustering,
+  fichaTecnica: FichaTecnicaDS
+): string {
+  const vars = fichaTecnica.variables
+    .filter((v) => v.rol === 'feature')
+    .map((v) => v.nombre)
+    .join(', ');
+
+  if (algoritmo === 'kmeans') {
+    return `Seleccioné K-Means sobre las variables escaladas (${vars}) para identificar centroides representativos y segmentar los registros en grupos compactos.`;
+  }
+  if (algoritmo === 'dbscan') {
+    return `Seleccioné DBSCAN sobre (${vars}) para capturar regiones de densidad variable y aislar automáticamente las lecturas atípicas o ruido con etiqueta -1.`;
+  }
+  return `Seleccioné Clustering Jerárquico Aglomerativo sobre (${vars}) para analizar la estructura de fusiones taxonómicas mediante el dendrograma.`;
+}
+
 export function Step4SeleccionAlgoritmoDS({
   fichaTecnica,
   problemaOriginal,
@@ -108,16 +127,12 @@ export function Step4SeleccionAlgoritmoDS({
     if (hiperparametros?.justificacionEstudiante) {
       return hiperparametros.justificacionEstudiante;
     }
-    if (algoritmoSeleccionado === 'kmeans') {
-      return 'Elegí K-Means por su simplicidad y velocidad para segmentar los registros numéricos escalados.';
-    }
-    if (algoritmoSeleccionado === 'dbscan') {
-      return 'Elegí DBSCAN para capturar geometrías complejas y aislar posibles puntos de ruido o anomalías.';
-    }
-    return 'Elegí Clustering Jerárquico para explorar el árbol de relaciones taxonómicas mediante el dendrograma.';
+    return redactarJustificacionContextual(algoritmoSeleccionado, fichaTecnica);
   });
 
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
+  const [consultandoIA, setConsultandoIA] = useState<boolean>(false);
+  const [explicacionTutor, setExplicacionTutor] = useState<string | null>(null);
 
   // Ejecución de las 5 reglas determinísticas
   const advertencias: AdvertenciaValidacionDS[] = validarModeloDS(
@@ -127,6 +142,7 @@ export function Step4SeleccionAlgoritmoDS({
 
   const handleSeleccionarAlgoritmo = (algoritmo: AlgoritmoClustering) => {
     onActualizarAlgoritmo(algoritmo);
+    setJustificacion(redactarJustificacionContextual(algoritmo, fichaTecnica));
     setErrorLocal(null);
 
     void registrarDecisionEnIDB({
@@ -135,6 +151,21 @@ export function Step4SeleccionAlgoritmoDS({
       descripcion: `Seleccionó el algoritmo: ${algoritmo.toUpperCase()}.`,
       origen: 'estudiante',
     });
+  };
+
+  const handleConsultarTutorAlgoritmo = async () => {
+    setConsultandoIA(true);
+    try {
+      const resp = await consultarTutorContextualDS({
+        paso: 4,
+        fichaTecnica,
+        algoritmo: algoritmoSeleccionado,
+      });
+      setExplicacionTutor(resp);
+      setJustificacion(resp);
+    } finally {
+      setConsultandoIA(false);
+    }
   };
 
   const handleResolverAdvertencia = (adv: AdvertenciaValidacionDS) => {
@@ -149,6 +180,7 @@ export function Step4SeleccionAlgoritmoDS({
     }
     if (nuevoAlgoritmo !== algoritmoSeleccionado) {
       onActualizarAlgoritmo(nuevoAlgoritmo);
+      setJustificacion(redactarJustificacionContextual(nuevoAlgoritmo, fichaActualizada));
     }
 
     void registrarDecisionEnIDB({
@@ -251,10 +283,21 @@ export function Step4SeleccionAlgoritmoDS({
 
       {/* Explicación del tutor IA */}
       <div className="tutor-explanation-box">
-        <strong>Tutor IA:</strong>
-        <p>
-          El validador determinístico analiza el enunciado y tus variables en busca de formas complejas
-          o presencia de ruido. Seleccioná el algoritmo que mejor responda a las características de tu problema.
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <strong>Tutor IA:</strong>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            data-testid="ask-tutor-step4-btn"
+            onClick={handleConsultarTutorAlgoritmo}
+            disabled={consultandoIA || deshabilitado}
+          >
+            {consultandoIA ? '⏳ Consultando al Tutor...' : '✨ Pedir recomendación al Tutor IA'}
+          </button>
+        </div>
+        <p style={{ marginTop: '0.35rem' }}>
+          {explicacionTutor ||
+            'El validador determinístico analiza el enunciado y tus variables en busca de formas complejas o presencia de ruido. Seleccioná el algoritmo que mejor responda a las características de tu problema o consultá al Tutor IA para redactar la fundamentación.'}
         </p>
       </div>
 

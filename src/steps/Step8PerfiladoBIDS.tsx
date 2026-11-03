@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   AlgoritmoClustering,
   FichaTecnicaDS,
@@ -11,6 +11,7 @@ import {
   optimizarPerfilesConIA,
   generarGuiaPowerBI,
 } from '../core/businessProfile';
+import { ResumenClusterInfo } from '../core/workers/pyodideClient';
 import { guardarProyectoEnIDB, registrarDecisionEnIDB } from '../core/storageDS';
 
 export interface Step8PerfiladoBIDSProps {
@@ -19,6 +20,7 @@ export interface Step8PerfiladoBIDSProps {
   algoritmoSeleccionado: AlgoritmoClustering;
   hiperparametros?: HiperparametrosClustering;
   metricas?: MetricasEvaluacion;
+  resumenClusters?: ResumenClusterInfo[];
   perfiles?: PerfilCluster[];
   onActualizarPerfiles: (perfiles: PerfilCluster[]) => void;
   onAvanzarAPaso9: () => void;
@@ -32,6 +34,7 @@ export function Step8PerfiladoBIDS({
   algoritmoSeleccionado,
   hiperparametros,
   metricas,
+  resumenClusters,
   perfiles: perfilesProps,
   onActualizarPerfiles,
   onAvanzarAPaso9,
@@ -50,9 +53,26 @@ export function Step8PerfiladoBIDS({
     return generarPerfilesDeNegocio({
       fichaTecnica,
       algoritmo: algoritmoSeleccionado,
+      hiperparametros,
       metricas,
+      resumenClusters,
     });
   });
+
+  useEffect(() => {
+    if (perfilesProps && perfilesProps.length > 0) {
+      setPerfilesLocales(perfilesProps);
+      return;
+    }
+    const nuevos = generarPerfilesDeNegocio({
+      fichaTecnica,
+      algoritmo: algoritmoSeleccionado,
+      hiperparametros,
+      metricas,
+      resumenClusters,
+    });
+    setPerfilesLocales(nuevos);
+  }, [fichaTecnica, algoritmoSeleccionado, hiperparametros, resumenClusters]);
 
   // Guía de Power BI y DAX
   const guiaPowerBI = useMemo(
@@ -77,6 +97,9 @@ export function Step8PerfiladoBIDS({
       const refinados = await optimizarPerfilesConIA({
         fichaTecnica,
         algoritmo: algoritmoSeleccionado,
+        hiperparametros,
+        metricas,
+        resumenClusters,
       });
       setPerfilesLocales(refinados);
       onActualizarPerfiles(refinados);

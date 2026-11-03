@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FichaTecnicaDS, TipoVariable } from '../core/schemas';
 import { guardarProyectoEnIDB, registrarDecisionEnIDB } from '../core/storageDS';
 import { validarModeloDS, AdvertenciaValidacionDS } from '../core/modelValidatorDS';
+import { consultarTutorContextualDS } from '../core/clarityDS';
+import { generarDatasetSintetico } from '../core/sampleDataset';
 
 export interface Step3EstructuraDatosDSProps {
   fichaTecnica: FichaTecnicaDS;
@@ -22,10 +24,51 @@ export function Step3EstructuraDatosDS({
 }: Step3EstructuraDatosDSProps) {
   const [estrategiaNulos, setEstrategiaNulos] = useState<string>('imputar_mediana');
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
+  const [consultandoIA, setConsultandoIA] = useState<boolean>(false);
+  const [explicacionTutor, setExplicacionTutor] = useState<string | null>(null);
+
+  // Muestra exploratoria del dataset para visualizar órdenes de magnitud reales por variable
+  const estadisticosVariables = useMemo(() => {
+    const muestra = generarDatasetSintetico(fichaTecnica, 60, 42);
+    const stats: Record<string, { min: number; max: number; media: number }> = {};
+
+    for (const v of fichaTecnica.variables) {
+      if (v.tipo === 'numerica_continua' || v.tipo === 'numerica_discreta') {
+        const valores = muestra
+          .map((f) => Number(f[v.nombre]))
+          .filter((n) => Number.isFinite(n));
+        if (valores.length > 0) {
+          const min = Math.min(...valores);
+          const max = Math.max(...valores);
+          const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+          stats[v.nombre] = {
+            min: Number(min.toFixed(1)),
+            max: Number(max.toFixed(1)),
+            media: Number(media.toFixed(1)),
+          };
+        }
+      }
+    }
+    return stats;
+  }, [fichaTecnica]);
 
   // Ejecutamos validación determinística temprana
   const advertencias: AdvertenciaValidacionDS[] = validarModeloDS(fichaTecnica, 'kmeans');
   const advEscala = advertencias.find((a) => a.regla === 'escala_kmeans');
+
+  const handleConsultarTutorEDA = async () => {
+    setConsultandoIA(true);
+    try {
+      const resp = await consultarTutorContextualDS({
+        paso: 3,
+        fichaTecnica,
+        detalleExtra: `Estrategia de nulos: ${estrategiaNulos}`,
+      });
+      setExplicacionTutor(resp);
+    } finally {
+      setConsultandoIA(false);
+    }
+  };
 
   const handleAplicarStandardScalerTodas = () => {
     const variablesActualizadas = fichaTecnica.variables.map((v) => {
@@ -159,11 +202,21 @@ export function Step3EstructuraDatosDS({
 
       {/* Explicación del tutor IA */}
       <div className="tutor-explanation-box">
-        <strong>Tutor IA:</strong>
-        <p>
-          Analizá las variables definidas en la Ficha Técnica. Si vas a utilizar algoritmos basados en
-          distancias euclidianas (como K-Means), asegurate de que todas las variables cuantitativas
-          estén normalizadas con <code>StandardScaler</code>.
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <strong>Tutor IA:</strong>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            data-testid="ask-tutor-step3-btn"
+            onClick={handleConsultarTutorEDA}
+            disabled={consultandoIA || deshabilitado}
+          >
+            {consultandoIA ? '⏳ Analizando variables...' : '✨ Analizar mis variables con Tutor IA'}
+          </button>
+        </div>
+        <p style={{ marginTop: '0.35rem' }}>
+          {explicacionTutor ||
+            `Analizá las ${fichaTecnica.variables.length} variables definidas para "${fichaTecnica.problemaNegocio}". Observá los rangos estimados de cada columna: si hay órdenes de magnitud dispares, asegurate de activar StandardScaler en todas las features cuantitativas.`}
         </p>
       </div>
 
@@ -241,11 +294,11 @@ export function Step3EstructuraDatosDS({
           <table className="model-table" data-testid="eda-table">
             <thead>
               <tr>
-                <th style={{ width: '20%' }}>Variable</th>
+                <th style={{ width: '24%' }}>Variable y Rango Estimado (EDA)</th>
                 <th style={{ width: '18%' }}>Tipo de Variable</th>
-                <th style={{ width: '15%' }}>Rol en el Modelo</th>
+                <th style={{ width: '13%' }}>Rol en el Modelo</th>
                 <th style={{ width: '22%' }}>Estrategia de Escalado</th>
-                <th style={{ width: '25%' }}>Estado de Calidad</th>
+                <th style={{ width: '23%' }}>Estado de Calidad</th>
               </tr>
             </thead>
             <tbody>
@@ -254,6 +307,7 @@ export function Step3EstructuraDatosDS({
                   variable.tipo === 'numerica_continua' || variable.tipo === 'numerica_discreta';
                 const requiereEscalado =
                   variable.rol === 'feature' && esCuantitativa && variable.escaladoRecomendado === 'ninguno';
+                const st = estadisticosVariables[variable.nombre];
 
                 return (
                   <tr key={idx} data-testid={`eda-row-${idx}`}>
@@ -262,6 +316,17 @@ export function Step3EstructuraDatosDS({
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         {variable.descripcion}
                       </div>
+                      {st && variable.rol !== 'identificador' && (
+                        <div
+                          style={{
+                            fontSize: '0.72rem',
+                            color: 'var(--accent-cyan)',
+                            marginTop: '0.2rem',
+                          }}
+                        >
+                          Rango: [{st.min} – {st.max}] • Media: {st.media}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <select

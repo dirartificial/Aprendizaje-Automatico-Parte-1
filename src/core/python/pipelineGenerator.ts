@@ -58,19 +58,33 @@ export interface OpcionesPipeline {
  * Si no hay features explícitas, toma todas las cuantitativas.
  */
 function obtenerNombresFeatures(fichaTecnica: FichaTecnicaDS): string[] {
+  const featuresCuantitativas = fichaTecnica.variables
+    .filter(
+      (v) =>
+        v.rol === 'feature' &&
+        (v.tipo === 'numerica_continua' || v.tipo === 'numerica_discreta')
+    )
+    .map((v) => v.nombre);
+
+  if (featuresCuantitativas.length >= 2) return featuresCuantitativas;
+
+  // Fallback a todas las cuantitativas no identificadoras
+  const cuantitativas = fichaTecnica.variables
+    .filter(
+      (v) =>
+        v.rol !== 'identificador' &&
+        (v.tipo === 'numerica_continua' || v.tipo === 'numerica_discreta')
+    )
+    .map((v) => v.nombre);
+
+  if (cuantitativas.length >= 2) return cuantitativas;
+
   const features = fichaTecnica.variables
     .filter((v) => v.rol === 'feature')
     .map((v) => v.nombre);
 
-  if (features.length >= 2) return features;
-
-  // Fallback a cuantitativas
-  const cuantitativas = fichaTecnica.variables
-    .filter((v) => v.tipo === 'numerica_continua' || v.tipo === 'numerica_discreta')
-    .map((v) => v.nombre);
-
-  return cuantitativas.length >= 2
-    ? cuantitativas
+  return features.length >= 2
+    ? features
     : fichaTecnica.variables.map((v) => v.nombre);
 }
 
@@ -184,7 +198,7 @@ plt.scatter(
 
 plt.title(f"Segmentación K-Means (K={k}) — Coef. Silueta: {silueta:.2f}", fontsize=13, fontweight='bold')
 plt.xlabel(features[0], fontsize=11)
-plt.ylabel(features[1] ?? features[0], fontsize=11)
+plt.ylabel(features[1] if len(features) > 1 else features[0], fontsize=11)
 plt.grid(True, linestyle='--', alpha=0.4)
 plt.colorbar(scatter, label='Cluster asignado')
 plt.legend(loc='best')
@@ -248,7 +262,7 @@ scatter = ax2.scatter(
 )
 ax2.set_title(f"Asignación de Clusters (K={k})", fontsize=12, fontweight='bold')
 ax2.set_xlabel(features[0])
-ax2.set_ylabel(features[1] ?? features[0])
+ax2.set_ylabel(features[1] if len(features) > 1 else features[0])
 ax2.grid(True, linestyle='--', alpha=0.3)
 fig.colorbar(scatter, ax=ax2, label='Cluster asignado')
 
@@ -297,7 +311,7 @@ mask_densos = labels != -1
 if mask_densos.any():
     scatter = plt.scatter(
         X.loc[mask_densos, features[0]],
-        X.loc[mask_densos, features[1] ?? features[0]],
+        X.loc[mask_densos, features[1] if len(features) > 1 else features[0]],
         c=labels[mask_densos],
         cmap='Spectral',
         s=60,
@@ -313,7 +327,7 @@ mask_ruido = labels == -1
 if mask_ruido.any():
     plt.scatter(
         X.loc[mask_ruido, features[0]],
-        X.loc[mask_ruido, features[1] ?? features[0]],
+        X.loc[mask_ruido, features[1] if len(features) > 1 else features[0]],
         c='#94a3b8',
         marker='x',
         s=45,
@@ -323,7 +337,7 @@ if mask_ruido.any():
 
 plt.title(f"DBSCAN (eps={eps}, min_samples={minSamples}) — {n_clusters_} clusters detectados", fontsize=13, fontweight='bold')
 plt.xlabel(features[0], fontsize=11)
-plt.ylabel(features[1] ?? features[0], fontsize=11)
+plt.ylabel(features[1] if len(features) > 1 else features[0], fontsize=11)
 plt.grid(True, linestyle='--', alpha=0.4)
 plt.legend(loc='best')
 plt.tight_layout()
@@ -626,7 +640,7 @@ scatter = plt.scatter(X.iloc[:, 0], X.iloc[:, 1], c=labels, cmap='viridis', edge
 centroides = scaler.inverse_transform(kmeans.cluster_centers_)
 plt.scatter(centroides[:, 0], centroides[:, 1], c='red', marker='X', s=200, label='Centroides')
 plt.xlabel(features[0])
-plt.ylabel(features[1] ?? features[0])
+plt.ylabel(features[1] if len(features) > 1 else features[0])
 plt.title(f"Clusters K-Means (K={k})")
 plt.colorbar(scatter, label='Cluster')
 plt.legend()
@@ -640,7 +654,7 @@ ax1.set_title("Dendrograma de Agrupamiento")
 scatter = ax2.scatter(X.iloc[:, 0], X.iloc[:, 1], c=labels, cmap='plasma', edgecolors='k', alpha=0.7)
 ax2.set_title(f"Dispersión 2D (K={k})")
 ax2.set_xlabel(features[0])
-ax2.set_ylabel(features[1] ?? features[0])
+ax2.set_ylabel(features[1] if len(features) > 1 else features[0])
 fig.colorbar(scatter, ax=ax2, label='Cluster')
 plt.tight_layout()
 plt.show()`;
@@ -649,7 +663,7 @@ plt.show()`;
 scatter = plt.scatter(X.iloc[:, 0], X.iloc[:, 1], c=labels, cmap='Spectral', edgecolors='k', alpha=0.7)
 plt.title(f"DBSCAN (eps={eps}, min_samples={minSamples})")
 plt.xlabel(features[0])
-plt.ylabel(features[1] ?? features[0])
+plt.ylabel(features[1] if len(features) > 1 else features[0])
 plt.colorbar(scatter, label='Cluster (-1 = Ruido)')
 plt.show()`;
   }

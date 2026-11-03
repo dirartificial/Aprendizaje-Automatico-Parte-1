@@ -11,6 +11,7 @@ import {
   generarDiagnosticoJerarquico,
 } from '../core/metrics/diagnostics';
 import { guardarProyectoEnIDB, registrarDecisionEnIDB } from '../core/storageDS';
+import { consultarTutorContextualDS } from '../core/clarityDS';
 
 export interface Step5HiperparametrosDSProps {
   fichaTecnica: FichaTecnicaDS;
@@ -54,6 +55,8 @@ export function Step5HiperparametrosDS({
           : `Seleccioné K=${kSeleccionado} con enlace ${criterioEnlace} para obtener clusters compactos en el dendrograma.`)
   );
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
+  const [consultandoIA, setConsultandoIA] = useState<boolean>(false);
+  const [explicacionTutorExtra, setExplicacionTutorExtra] = useState<string | null>(null);
 
   const nFeaturesCuantitativas = useMemo(
     () =>
@@ -65,18 +68,18 @@ export function Step5HiperparametrosDS({
     [fichaTecnica]
   );
 
-  // Diagnósticos determinísticos según el algoritmo activo
+  // Diagnósticos calculados sobre los datos reales de la Ficha Técnica
   const diagKMeans = useMemo(
-    () => generarDiagnosticoKMeans(nFeaturesCuantitativas),
-    [nFeaturesCuantitativas]
+    () => generarDiagnosticoKMeans(nFeaturesCuantitativas, fichaTecnica),
+    [nFeaturesCuantitativas, fichaTecnica]
   );
   const diagDBSCAN = useMemo(
-    () => generarDiagnosticoDBSCAN(eps, minSamples),
-    [eps, minSamples]
+    () => generarDiagnosticoDBSCAN(eps, minSamples, fichaTecnica),
+    [eps, minSamples, fichaTecnica]
   );
   const diagJerarquico = useMemo(
-    () => generarDiagnosticoJerarquico(criterioEnlace, kSeleccionado),
-    [criterioEnlace, kSeleccionado]
+    () => generarDiagnosticoJerarquico(criterioEnlace, kSeleccionado, fichaTecnica),
+    [criterioEnlace, kSeleccionado, fichaTecnica]
   );
 
   // Métrica actual según selección
@@ -91,6 +94,28 @@ export function Step5HiperparametrosDS({
   const inerciaActual = algoritmoSeleccionado === 'kmeans' ? puntoActualKMeans.inercia : undefined;
   const clustersActuales =
     algoritmoSeleccionado === 'dbscan' ? diagDBSCAN.clustersEstimados : kSeleccionado;
+
+  const handleConsultarTutorDiagnostico = async () => {
+    setConsultandoIA(true);
+    try {
+      const detalle =
+        algoritmoSeleccionado === 'kmeans'
+          ? `K=${kSeleccionado}, Inercia WCSS=${puntoActualKMeans.inercia}, Silueta=${siluetaActual} (Codo óptimo en K=${diagKMeans.kOptimo})`
+          : algoritmoSeleccionado === 'dbscan'
+            ? `eps=${eps}, min_samples=${minSamples}, Clusters=${diagDBSCAN.clustersEstimados}, Ruido=${diagDBSCAN.porcentajeRuido}%, Silueta=${siluetaActual}`
+            : `K=${kSeleccionado}, Criterio de enlace=${criterioEnlace}, Silueta=${siluetaActual}`;
+      const resp = await consultarTutorContextualDS({
+        paso: 5,
+        fichaTecnica,
+        algoritmo: algoritmoSeleccionado,
+        detalleExtra: detalle,
+      });
+      setExplicacionTutorExtra(resp);
+      setJustificacion(resp);
+    } finally {
+      setConsultandoIA(false);
+    }
+  };
 
   const handleConfirmarYAvanzar = async () => {
     if (!justificacion.trim() || justificacion.trim().length < 5) {
@@ -199,11 +224,25 @@ export function Step5HiperparametrosDS({
 
       {/* Explicación del tutor IA */}
       <div className="tutor-explanation-box">
-        <strong>Tutor IA:</strong>
-        <p>
-          {algoritmoSeleccionado === 'kmeans' && diagKMeans.explicacion}
-          {algoritmoSeleccionado === 'dbscan' && diagDBSCAN.explicacion}
-          {algoritmoSeleccionado === 'jerarquico' && diagJerarquico.explicacion}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <strong>Tutor IA:</strong>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            data-testid="ask-tutor-step5-btn"
+            onClick={handleConsultarTutorDiagnostico}
+            disabled={consultandoIA || deshabilitado}
+          >
+            {consultandoIA ? '⏳ Interpretando métricas...' : '✨ Interpretar diagnóstico con Tutor IA'}
+          </button>
+        </div>
+        <p style={{ marginTop: '0.35rem' }}>
+          {explicacionTutorExtra ||
+            (algoritmoSeleccionado === 'kmeans'
+              ? diagKMeans.explicacion
+              : algoritmoSeleccionado === 'dbscan'
+                ? diagDBSCAN.explicacion
+                : diagJerarquico.explicacion)}
         </p>
       </div>
 
@@ -508,14 +547,13 @@ export function Step5HiperparametrosDS({
               role="img"
               aria-label="Visualización de densidades en DBSCAN"
             >
-              {/* Puntos simulados de semilunas y ruido */}
+              {/* Puntos proyectados de densidad y ruido en DBSCAN */}
               {diagDBSCAN.puntosSimulados.map((p) => {
                 const esRuido = p.tipo === 'noise' || p.cluster === -1;
+                const paleta = ['#38bdf8', '#10b981', '#818cf8', '#fbbf24', '#f472b6'];
                 const color = esRuido
                   ? '#ef4444'
-                  : p.cluster === 0
-                    ? '#38bdf8'
-                    : '#10b981';
+                  : paleta[Math.abs(p.cluster) % paleta.length];
 
                 return (
                   <circle
@@ -533,11 +571,11 @@ export function Step5HiperparametrosDS({
               {/* Leyenda de clusters DBSCAN */}
               <g transform="translate(20, 20)">
                 <circle cx="10" cy="10" r="5" fill="#38bdf8" />
-                <text x="22" y="14" fill="#cbd5e1" fontSize="11">Cluster 0 (Semiluna Sup)</text>
-                <circle cx="170" cy="10" r="5" fill="#10b981" />
-                <text x="182" y="14" fill="#cbd5e1" fontSize="11">Cluster 1 (Semiluna Inf)</text>
-                <circle cx="330" cy="10" r="5" fill="#ef4444" />
-                <text x="342" y="14" fill="#fca5a5" fontSize="11">Etiqueta -1 (Ruido/Outliers)</text>
+                <text x="22" y="14" fill="#cbd5e1" fontSize="11">Cluster 0 (Denso)</text>
+                <circle cx="135" cy="10" r="5" fill="#10b981" />
+                <text x="147" y="14" fill="#cbd5e1" fontSize="11">Cluster 1..N (Denso)</text>
+                <circle cx="285" cy="10" r="5" fill="#ef4444" />
+                <text x="297" y="14" fill="#fca5a5" fontSize="11">Etiqueta -1 (Ruido/Outliers)</text>
               </g>
             </svg>
           </div>

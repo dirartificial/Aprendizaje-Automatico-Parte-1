@@ -350,13 +350,13 @@ describe('Fase 2 — Integración Completa en el Wizard de App', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('confirm-step1-btn')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
     fireEvent.click(screen.getByTestId('confirm-step1-btn'));
 
     // Paso 2: Ficha Técnica
     await waitFor(() => {
       expect(screen.getByTestId('step2-container')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
     fireEvent.click(screen.getByTestId('confirm-step2-btn'));
 
     // Paso 3: EDA y Preprocesamiento

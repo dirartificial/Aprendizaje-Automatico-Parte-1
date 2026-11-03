@@ -40,6 +40,7 @@ import { Step7EjecucionWasmDS } from './steps/Step7EjecucionWasmDS';
 import { Step8PerfiladoBIDS } from './steps/Step8PerfiladoBIDS';
 import { StepEntregablesDS } from './steps/StepEntregablesDS';
 import { GlossaryModalDS } from './steps/GlossaryModalDS';
+import { ResumenClusterInfo } from './core/workers/pyodideClient';
 
 export interface PasoMeta {
   numero: number;
@@ -120,6 +121,9 @@ export function App() {
     undefined
   );
   const [metricas, setMetricas] = useState<MetricasEvaluacion | undefined>(undefined);
+  const [resumenClusters, setResumenClusters] = useState<ResumenClusterInfo[] | undefined>(
+    undefined
+  );
   const [perfiles, setPerfiles] = useState<PerfilCluster[] | undefined>(undefined);
 
   useEffect(() => {
@@ -805,6 +809,10 @@ export function App() {
                   hiperparametros={hiperparametros}
                   metricas={metricas}
                   onActualizarMetricas={setMetricas}
+                  onActualizarResumenClusters={(res) => {
+                    setResumenClusters(res);
+                    setPerfiles(undefined);
+                  }}
                   onAvanzarAPaso8={() => cambiarPaso(8)}
                   onVolverAPaso6={() => cambiarPaso(6)}
                 />
@@ -817,6 +825,7 @@ export function App() {
                   algoritmoSeleccionado={algoritmoSeleccionado}
                   hiperparametros={hiperparametros}
                   metricas={metricas}
+                  resumenClusters={resumenClusters}
                   perfiles={perfiles}
                   onActualizarPerfiles={setPerfiles}
                   onAvanzarAPaso9={() => cambiarPaso(9)}

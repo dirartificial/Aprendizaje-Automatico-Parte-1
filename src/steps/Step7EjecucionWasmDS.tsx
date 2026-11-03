@@ -14,8 +14,10 @@ import {
   ejecutarPipelinePyodide,
   ejecutarPipelineFallbackLocal,
   PuntoCluster2D,
+  ResumenClusterInfo,
   ResultadoEjecucionPipeline,
 } from '../core/workers/pyodideClient';
+import { consultarTutorContextualDS } from '../core/clarityDS';
 import { guardarProyectoEnIDB, registrarDecisionEnIDB } from '../core/storageDS';
 
 export interface Step7EjecucionWasmDSProps {
@@ -25,6 +27,7 @@ export interface Step7EjecucionWasmDSProps {
   hiperparametros?: HiperparametrosClustering;
   metricas?: MetricasEvaluacion;
   onActualizarMetricas?: (metricas: MetricasEvaluacion) => void;
+  onActualizarResumenClusters?: (resumen: ResumenClusterInfo[]) => void;
   onAvanzarAPaso8: () => void;
   onVolverAPaso6: () => void;
   deshabilitado?: boolean;
@@ -48,6 +51,7 @@ export function Step7EjecucionWasmDS({
   hiperparametros,
   metricas: _metricas,
   onActualizarMetricas,
+  onActualizarResumenClusters,
   onAvanzarAPaso8,
   onVolverAPaso6,
   deshabilitado = false,
@@ -56,8 +60,10 @@ export function Step7EjecucionWasmDS({
   const [mensajeEstado, setMensajeEstado] = useState<string>('Listo para ejecutar');
   const [seedDataset, setSeedDataset] = useState<number>(42);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState<PuntoCluster2D | null>(null);
+  const [explicacionTutorIA, setExplicacionTutorIA] = useState<string | null>(null);
+  const [consultandoTutor, setConsultandoTutor] = useState<boolean>(false);
 
-  // Obtener nombres de las dos variables explicativas principales para la proyección 2D
+  // Obtener nombres de las variables explicativas cuantitativas
   const varsCuantitativas = useMemo(() => {
     const cuantitativas = fichaTecnica.variables.filter(
       (v) =>
@@ -97,8 +103,27 @@ export function Step7EjecucionWasmDS({
       fichaTecnica,
       algoritmo: algoritmoSeleccionado,
       hiperparametros,
+      seedDataset: 42,
     })
   );
+
+  // Mantener resultado sincronizado si cambian fichaTecnica, algoritmo o hiperparámetros
+  useEffect(() => {
+    const nuevoRes = ejecutarPipelineFallbackLocal({
+      fichaTecnica,
+      algoritmo: algoritmoSeleccionado,
+      hiperparametros,
+      seedDataset,
+    });
+    setResultado(nuevoRes);
+    onActualizarResumenClusters?.(nuevoRes.resumenClusters);
+    onActualizarMetricas?.({
+      inercia: nuevoRes.metricas.inercia,
+      silhouetteScore: nuevoRes.metricas.silueta,
+      numeroClustersIdentificados: nuevoRes.metricas.numeroClusters,
+      porcentajeRuido: nuevoRes.metricas.porcentajeRuido,
+    });
+  }, [fichaTecnica, algoritmoSeleccionado, hiperparametros]);
 
   // Función para ejecutar el pipeline
   const ejecutarPipeline = useCallback(async () => {
@@ -116,6 +141,7 @@ export function Step7EjecucionWasmDS({
       });
 
       setResultado(res);
+      onActualizarResumenClusters?.(res.resumenClusters);
       setMensajeEstado(
         res.esSimulado
           ? '✓ Ejecución determinística completada (modo simulación local)'
@@ -136,13 +162,24 @@ export function Step7EjecucionWasmDS({
         fichaTecnica,
         algoritmo: algoritmoSeleccionado,
         hiperparametros,
+        seedDataset,
       });
       setResultado(fallback);
+      onActualizarResumenClusters?.(fallback.resumenClusters);
       setMensajeEstado('✓ Ejecución completada mediante fallback local');
     } finally {
       setEjecutando(false);
     }
-  }, [scriptPython, datasetCSV, fichaTecnica, algoritmoSeleccionado, hiperparametros, onActualizarMetricas]);
+  }, [
+    scriptPython,
+    datasetCSV,
+    fichaTecnica,
+    algoritmoSeleccionado,
+    hiperparametros,
+    seedDataset,
+    onActualizarMetricas,
+    onActualizarResumenClusters,
+  ]);
 
   // Si cambia la semilla (regenerar datos), re-ejecutar
   const isFirstMount = useRef(true);
@@ -211,7 +248,40 @@ export function Step7EjecucionWasmDS({
     [svgBounds]
   );
 
+  const handleConsultarTutorIA = async () => {
+    setConsultandoTutor(true);
+    try {
+      const resumenTexto = resultado.resumenClusters
+        .map(
+          (r) =>
+            `${r.cluster} (${r.porcentaje}%): ` +
+            Object.entries(r.medias)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(', ')
+        )
+        .join(' | ');
+      const detalleExtra = `Clusters identificados: ${resultado.metricas.numeroClusters}. Silueta: ${resultado.metricas.silueta.toFixed(3)}. Inercia: ${resultado.metricas.inercia ?? 'N/A'}. Ruido: ${resultado.metricas.porcentajeRuido ?? 0}%. Resumen de medias por cluster: ${resumenTexto}`;
+      const respuesta = await consultarTutorContextualDS({
+        paso: 7,
+        fichaTecnica,
+        algoritmo: algoritmoSeleccionado,
+        detalleExtra,
+      });
+      setExplicacionTutorIA(respuesta);
+    } finally {
+      setConsultandoTutor(false);
+    }
+  };
+
   const handleConfirmarYAvanzar = async () => {
+    onActualizarResumenClusters?.(resultado.resumenClusters);
+    onActualizarMetricas?.({
+      inercia: resultado.metricas.inercia,
+      silhouetteScore: resultado.metricas.silueta,
+      numeroClustersIdentificados: resultado.metricas.numeroClusters,
+      porcentajeRuido: resultado.metricas.porcentajeRuido,
+    });
+
     try {
       await registrarDecisionEnIDB({
         paso: 7,
@@ -296,11 +366,29 @@ export function Step7EjecucionWasmDS({
 
       {/* Bloque de Explicación del Tutor IA */}
       <div className="tutor-explanation-box">
-        <strong>Tutor IA:</strong>
-        <p>
-          Hemos ejecutado el pipeline de <strong>{algoritmoSeleccionado.toUpperCase()}</strong> en tu
-          navegador con un dataset sintético coherente. En el gráfico interactivo podés hacer hover o
-          clic en cada punto para ver sus valores exactos, centroides y etiquetas.
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <strong>Tutor IA:</strong>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            data-testid="ask-tutor-step7-btn"
+            onClick={() => void handleConsultarTutorIA()}
+            disabled={consultandoTutor || ejecutando || deshabilitado}
+          >
+            {consultandoTutor
+              ? '✨ Interpretando clusters...'
+              : '✨ Interpretar clusters con Tutor IA'}
+          </button>
+        </div>
+        <p style={{ marginTop: '0.35rem' }}>
+          {explicacionTutorIA || (
+            <>
+              Hemos ejecutado el pipeline de <strong>{algoritmoSeleccionado.toUpperCase()}</strong> en tu
+              navegador proyectando <strong>{nombreEjeX}</strong> vs <strong>{nombreEjeY}</strong>. En el
+              gráfico interactivo podés hacer clic en cada muestra para ver sus coordenadas exactas,
+              centroides y pertenencia de cluster.
+            </>
+          )}
         </p>
       </div>
 
@@ -615,16 +703,22 @@ export function Step7EjecucionWasmDS({
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                     <th style={{ padding: '0.3rem 0.4rem' }}>Grupo</th>
-                    <th style={{ padding: '0.3rem 0.4rem' }}>{nombreEjeX}</th>
-                    <th style={{ padding: '0.3rem 0.4rem' }}>{nombreEjeY}</th>
+                    {varsCuantitativas.map((v) => (
+                      <th key={v.nombre} style={{ padding: '0.3rem 0.4rem' }}>
+                        {v.nombre}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {resultado.resumenClusters.map((r, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                       <td style={{ padding: '0.4rem', fontWeight: 600 }}>{r.cluster}</td>
-                      <td style={{ padding: '0.4rem' }}>{r.medias[nombreEjeX] ?? '-'}</td>
-                      <td style={{ padding: '0.4rem' }}>{r.medias[nombreEjeY] ?? '-'}</td>
+                      {varsCuantitativas.map((v) => (
+                        <td key={v.nombre} style={{ padding: '0.4rem' }}>
+                          {r.medias[v.nombre] ?? '-'}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

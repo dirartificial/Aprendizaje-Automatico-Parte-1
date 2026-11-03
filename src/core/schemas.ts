@@ -57,7 +57,12 @@ export const FichaTecnicaSchema = z.object({
   tarea: TareaMLSchema,
   justificacionParadigma: z.string().min(5, 'Debe incluir una justificación metodológica'),
   variables: z.array(VariableSchema).min(1, 'Debe contar con al menos una variable definida'),
-  variableTarget: z.string().optional(),
+  variableTarget: z
+    .preprocess(
+      (v) => (v === null || v === '' || v === 'null' ? undefined : v),
+      z.string().optional()
+    )
+    .optional(),
   restricciones: z.array(z.string()).default([]),
 });
 export type FichaTecnicaDS = z.infer<typeof FichaTecnicaSchema>;
